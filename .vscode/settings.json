@@ -1,0 +1,7 @@
+{
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "text": "Generate a clear, procedural and detailed set of commit messages that states all the changes made in the code with notations in hyphens."
+        },
+    ],
+}

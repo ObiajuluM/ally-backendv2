@@ -1,0 +1,15 @@
+TODO
+
+lat
+long
+accuracy
+alt
+alt_accuracy
+time
+
+# ws://127.0.0.1:8000/ws/live/room/
+
+python manage.py seed_fake_data --users 25 --responders 40 --seed 123
+
+
+static/ally
