@@ -45,13 +45,13 @@ class LiveLocationConsumer(WebsocketConsumer):
     def receive(self, text_data):
         # Receiving from the socket means the client is trying to publish. 
         # Viewers are allowed to stay connected, but they cannot inject updates.
-        if not self.can_publish:
-            self.send(
-                text_data=json.dumps(
-                    {"error": "Only the authenticated room owner can publish updates."}
-                )
-            )
-            return
+        # if not self.can_publish:
+        #     self.send(
+        #         text_data=json.dumps(
+        #             {"error": "Only the authenticated room owner can publish updates."}
+        #         )
+        #     )
+        #     return
 
         # Reject malformed JSON early so only valid payloads reach the group.
         try:

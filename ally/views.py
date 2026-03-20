@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.permissions import IsAuthenticated
 from config import settings
 from .models import FirstResponder, MyInformation, User
 from .serializers import (
@@ -14,6 +15,23 @@ from google.auth.transport import requests
 
 # from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
+
+# for permissions to decorate views
+
+from rest_framework.permissions import BasePermission
+
+
+class APIPermission(BasePermission):
+    allow_read_only = False
+
+    @staticmethod
+    def is_safe(request):
+        return request.method in ["GET", "HEAD", "OPTIONS"]
+
+
+class IsOwner(APIPermission):
+    def has_object_permission(self, request, view, obj):
+        return request.user and obj.owner == request.user
 
 
 class GoogleAuthView(APIView):
@@ -71,8 +89,14 @@ class MyInformationListCreateView(ListCreateAPIView):
 
 
 class MyInformationRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
-    queryset = MyInformation.objects.select_related("address")
     serializer_class = MyInformationSerializer
+    permission_classes = [IsAuthenticated, IsOwner]
+    # Only retrieve (GET) and update (PUT / PATCH) are permitted — delete is blocked.
+    http_method_names = ["get", "put", "patch", "head", "options"]
+
+    def get_object(self):
+        # Always resolve to the authenticated user's own MyInformation — no UUID in the URL needed.
+        return self.request.user.my_information
 
 
 class UserListCreateView(ListCreateAPIView):
@@ -83,8 +107,11 @@ class UserListCreateView(ListCreateAPIView):
 
 class UserRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.select_related("my_information")
-    # queryset = MyInformation.objects.prefetch_related("myInformation")
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsOwner]
+    # Only retrieve (GET) and update (PUT / PATCH) are permitted — delete is blocked.
+
+    http_method_names = ["get", "put", "patch", "head", "options"]
 
 
 class FirstResponderListCreateView(ListCreateAPIView):

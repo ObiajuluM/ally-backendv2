@@ -9,6 +9,8 @@ time
 
 # ws://127.0.0.1:8000/ws/live/room/
 
+docker run --rm -p 6379:6379 redis:7
+
 python manage.py seed_fake_data --users 25 --responders 40 --seed 123
 
 

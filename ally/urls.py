@@ -1,5 +1,4 @@
 from django.urls import path
-
 from ally.views import (
     FirstResponderListCreateView,
     FirstResponderRetrieveUpdateDestroyView,
@@ -15,13 +14,14 @@ urlpatterns = [
     path("auth/google/", GoogleAuthView.as_view(), name="google-auth"),
     #
     # my information endpoints
+    # path(
+    #     "my-information/",
+    #     MyInformationListCreateView.as_view(),
+    #     name="myinformation-list-create",
+    # ),
     path(
+        # "my-information/me/",
         "my-information/",
-        MyInformationListCreateView.as_view(),
-        name="myinformation-list-create",
-    ),
-    path(
-        "my-information/<uuid:pk>/",
         MyInformationRetrieveUpdateDestroyView.as_view(),
         name="myinformation-detail",
     ),
