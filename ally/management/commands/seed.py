@@ -1,3 +1,4 @@
+import math
 import random
 
 from django.core.management.base import BaseCommand
@@ -27,8 +28,20 @@ class Command(BaseCommand):
         parser.add_argument(
             "--responders",
             type=int,
-            default=20,
+            default=100,
             help="Number of fake first responders to create.",
+        )
+        parser.add_argument(
+            "--cluster-lat",
+            type=float,
+            default=None,
+            help="Base latitude for the first-responder cluster (random if omitted).",
+        )
+        parser.add_argument(
+            "--cluster-lng",
+            type=float,
+            default=None,
+            help="Base longitude for the first-responder cluster (random if omitted).",
         )
         parser.add_argument(
             "--seed",
@@ -54,8 +67,20 @@ class Command(BaseCommand):
             self.create_user(fake)
             created_users += 1
 
+        # Determine the cluster centre for first responders.
+        base_lat = (
+            options["cluster_lat"]
+            if options["cluster_lat"] is not None
+            else round(random.uniform(-70, 70), 6)
+        )
+        base_lng = (
+            options["cluster_lng"]
+            if options["cluster_lng"] is not None
+            else round(random.uniform(-170, 170), 6)
+        )
+
         for _ in range(responders_count):
-            self.create_first_responder(fake)
+            self.create_first_responder(fake, base_lat, base_lng)
             created_responders += 1
 
         self.stdout.write(
@@ -68,6 +93,24 @@ class Command(BaseCommand):
         return Address.objects.create(
             latitude=round(random.uniform(-90, 90), 6),
             longitude=round(random.uniform(-180, 180), 6),
+            full_address=fake.address().replace("\n", ", "),
+        )
+
+    def create_clustered_address(self, fake, base_lat, base_lng, radius_miles=5):
+        """Return an Address within *radius_miles* of (base_lat, base_lng)."""
+        # Uniform random point inside a circle: scale by sqrt for uniform area distribution.
+        angle = random.uniform(0, 2 * math.pi)
+        distance = radius_miles * math.sqrt(random.random())  # miles
+        # 1 degree latitude ≈ 69 miles; longitude degree shrinks with cos(lat).
+        delta_lat = (distance / 69.0) * math.sin(angle)
+        delta_lng = (distance / (69.0 * math.cos(math.radians(base_lat)))) * math.cos(
+            angle
+        )
+        lat = round(max(-90.0, min(90.0, base_lat + delta_lat)), 6)
+        lng = round(max(-180.0, min(180.0, base_lng + delta_lng)), 6)
+        return Address.objects.create(
+            latitude=lat,
+            longitude=lng,
             full_address=fake.address().replace("\n", ", "),
         )
 
@@ -115,7 +158,7 @@ class Command(BaseCommand):
             my_information=my_information,
         )
 
-    def create_first_responder(self, fake):
+    def create_first_responder(self, fake, base_lat=0.0, base_lng=0.0):
         responder_type = random.choice(FirstResponderType.values)
         org_type = random.choice(OrganizationType.values)
         tag_count = random.randint(1, 4)
@@ -133,7 +176,7 @@ class Command(BaseCommand):
                 "website": fake.url(),
             },
             response_time=random.choice(["5 mins", "10 mins", "15 mins", "30 mins"]),
-            address=self.create_address(fake),
+            address=self.create_clustered_address(fake, 4.8948794, 6.9719772),
             tags=random.sample(list(FirstResponderTag.values), k=tag_count),
             metadata={
                 "service_area": fake.city(),

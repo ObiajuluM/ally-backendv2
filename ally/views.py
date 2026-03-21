@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from config import settings
-from .models import FirstResponder, MyInformation, User
+from .models import FirstResponder, FirstResponderType, MyInformation, User
 from .serializers import (
     FirstResponderSerializer,
     MyInformationSerializer,
@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from google.oauth2 import id_token
 from google.auth.transport import requests
+import math
 
 # from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -114,13 +115,107 @@ class UserRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     http_method_names = ["get", "put", "patch", "head", "options"]
 
 
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Return the great-circle distance in km between two (lat, lon) points."""
+    R = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dphi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    )
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
 class FirstResponderListCreateView(ListCreateAPIView):
     # use select_related() for instead of prefetch_related() to optimize queries
-    # since we are dealing with a single related object (address and socials)
+    # since we are dealing with a single related object (address)
     queryset = FirstResponder.objects.select_related(
         "address",
     )
     serializer_class = FirstResponderSerializer
+    http_method_names = ["get", "head", "options"]
+
+    def list(self, request, *args, **kwargs):
+        lat_param = request.query_params.get("lat")
+        lng_param = request.query_params.get("lng")
+        type_param = request.query_params.get("type")
+
+        # Validate type param when supplied.
+        if type_param is not None and type_param not in FirstResponderType.values:
+            return Response(
+                {
+                    "error": f"Invalid type '{type_param}'. Valid values are: {', '.join(FirstResponderType.values)}."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Fall back to default list behaviour when no geo params are supplied.
+        if lat_param is None and lng_param is None:
+            qs = self.get_queryset()
+            if type_param is not None:
+                qs = qs.filter(firstresponder_type=type_param)
+            serializer = self.get_serializer(qs, many=True)
+            return Response(serializer.data)
+
+        # Validate both params are present and numeric.
+        if lat_param is None or lng_param is None:
+            return Response(
+                {"error": "Both 'lat' and 'lng' query parameters are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            center_lat = float(lat_param)
+            center_lng = float(lng_param)
+        except ValueError:
+            return Response(
+                {"error": "'lat' and 'lng' must be valid numbers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        responders = (
+            FirstResponder.objects.select_related("address")
+            .exclude(address__isnull=True)
+            .exclude(address__latitude__isnull=True)
+            .exclude(address__longitude__isnull=True)
+        )
+        if type_param is not None:
+            responders = responders.filter(firstresponder_type=type_param)
+
+        # Compute distance and keep only those within 100 km.
+        nearby = []
+        for r in responders:
+            dist = _haversine_km(
+                center_lat,
+                center_lng,
+                float(r.address.latitude),
+                float(r.address.longitude),
+            )
+            if dist <= 100.0:
+                nearby.append((r, dist))
+
+        # Group into buckets (only the requested type when filtered, else all four).
+        active_types = (
+            [type_param] if type_param is not None else list(FirstResponderType.values)
+        )
+        buckets = {ft: [] for ft in active_types}
+        for r, dist in nearby:
+            ft = r.firstresponder_type
+            if ft in buckets:
+                buckets[ft].append((r, dist))
+
+        result = {}
+        for ft, items in buckets.items():
+            items.sort(key=lambda x: x[1])
+            serialized = []
+            for r, dist in items:
+                data = FirstResponderSerializer(r, context={"request": request}).data
+                data["distance_km"] = round(dist, 3)
+                serialized.append(data)
+            result[ft] = serialized
+
+        return Response(result)
 
 
 class FirstResponderRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):

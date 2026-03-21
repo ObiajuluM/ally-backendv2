@@ -13,5 +13,7 @@ docker run --rm -p 6379:6379 redis:7
 
 python manage.py seed_fake_data --users 25 --responders 40 --seed 123
 
+python manage.py seed --responders 150 --cluster-lat 6.5244 --cluster-lng 3.3792
+
 
 static/ally

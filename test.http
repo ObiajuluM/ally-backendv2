@@ -1,0 +1,13 @@
+@baseUrl = http://192.168.1.61:8000
+
+### Get all first responders within 100 km of a location (grouped by type, sorted closest first)
+GET {{baseUrl}}/first-responders/?lat=6.5244&lng=3.3792
+Accept: application/json
+
+### Get first responders within 100 km filtered to a single type
+GET {{baseUrl}}/first-responders/?lat=6.5244&lng=3.3792&type=abuseandviolence
+Accept: application/json
+
+### Get all first responders filtered to a single type (no geo filter)
+GET {{baseUrl}}/first-responders/?type=abuseandviolence
+Accept: application/json
