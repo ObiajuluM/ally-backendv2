@@ -109,22 +109,27 @@ class UserListCreateView(ListCreateAPIView):
 class UserRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.select_related("my_information")
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated]
     # Only retrieve (GET) and update (PUT / PATCH) are permitted — delete is blocked.
-
     http_method_names = ["get", "put", "patch", "head", "options"]
+
+    def get_object(self):
+        # Always resolve to the authenticated user — no UUID in the URL needed.
+        return self.request.user
 
 
 def _haversine_km(lat1, lon1, lat2, lon2):
     """Return the great-circle distance in km between two (lat, lon) points."""
-    R = 6371.0
+    R = 6371.0  # Earth's mean radius in kilometres
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
+    dphi = math.radians(lat2 - lat1)  # difference in latitudes
+    dlambda = math.radians(lon2 - lon1)  # difference in longitudes
+    # Haversine formula: a is the square of half the chord length between the points
     a = (
         math.sin(dphi / 2) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     )
+    # Angular distance in radians via atan2, then convert to km
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
@@ -183,7 +188,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
         if type_param is not None:
             responders = responders.filter(firstresponder_type=type_param)
 
-        # Compute distance and keep only those within 100 km.
+        # Compute distance and keep only those within 200 km.
         nearby = []
         for r in responders:
             dist = _haversine_km(
@@ -192,7 +197,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
                 float(r.address.latitude),
                 float(r.address.longitude),
             )
-            if dist <= 100.0:
+            if dist <= 200.0:
                 nearby.append((r, dist))
 
         # Group into buckets (only the requested type when filtered, else all four).

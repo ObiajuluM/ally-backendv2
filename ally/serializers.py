@@ -172,12 +172,13 @@ class MyInformationSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    my_information = serializers.HyperlinkedRelatedField(
-        view_name="myinformation-detail",
-        queryset=MyInformation.objects.all(),
-        required=False,
-        allow_null=True,
-    )
+    #     my_information = serializers.HyperlinkedRelatedField(
+    #     view_name="myinformation-detail",
+    #     queryset=MyInformation.objects.all(),
+    #     required=False,
+    #     allow_null=True,
+    # )
+    my_information = MyInformationSerializer(required=False, allow_null=True)
 
     class Meta:
         model = User

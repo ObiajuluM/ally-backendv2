@@ -26,17 +26,15 @@ urlpatterns = [
         name="myinformation-detail",
     ),
     #
-    # User endpoints
+    # # User endpoints
+    # path(
+    #     "user/",
+    #     UserListCreateView.as_view(),
+    #     name="user-list-create",
+    # ),
     path(
         "user/",
-        UserListCreateView.as_view(),
-        name="user-list-create",
-    ),
-    path(
-        "user/<uuid:id>/",
-        UserRetrieveUpdateDestroyView.as_view(
-            lookup_field="id",
-        ),
+        UserRetrieveUpdateDestroyView.as_view(),
         name="user-retrieve-update-destroy",
     ),
     #
