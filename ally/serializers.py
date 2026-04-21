@@ -37,6 +37,17 @@ class FirstResponderSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     metadata = serializers.DictField(required=False, allow_null=True)
+    # List of polygons; each polygon is a list of [lat, lng] two-element lists.
+    service_areas = serializers.ListField(
+        child=serializers.ListField(
+            child=serializers.ListField(
+                child=serializers.FloatField(), min_length=2, max_length=2
+            ),
+            min_length=3,
+        ),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = FirstResponder
@@ -53,6 +64,7 @@ class FirstResponderSerializer(serializers.ModelSerializer):
             "address",
             "tags",
             "metadata",
+            "service_areas",
         ]
         read_only_fields = ["id"]
 

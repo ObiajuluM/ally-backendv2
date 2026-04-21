@@ -178,6 +178,16 @@ class FirstResponder(models.Model):
         help_text='Additional metadata as JSON (e.g., {"key": "value"})',
     )
 
+    # Each entry is a polygon: a list of [lat, lng] pairs.
+    # A responder can cover multiple disconnected regions.
+    # e.g. [[[5.3,7.1],[5.3,8.0],[6.9,8.0],[6.9,7.1]], [[4.0,6.0],[4.0,7.0],[5.0,7.0],[5.0,6.0]]]
+    service_areas = models.JSONField(
+        blank=True,
+        null=True,
+        default=None,
+        help_text="List of polygons, each a list of [lat, lng] pairs defining a service area.",
+    )
+
     def __str__(self):
         return self.name or "Unnamed First Responder"
 
