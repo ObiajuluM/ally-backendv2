@@ -113,12 +113,13 @@ class FirstResponderAdmin(admin.ModelAdmin):
         "response_time",
         "address_summary",
         "tag_count",
+        "service_area_count",
     )
     list_filter = ("firstresponder_type", "organization_type")
     search_fields = ("id", "name", "description", "address__full_address")
     list_select_related = ("address",)
     autocomplete_fields = ("address",)
-    readonly_fields = ("id", "tag_count")
+    readonly_fields = ("id", "tag_count", "service_area_count")
     fieldsets = (
         (
             "Overview",
@@ -147,7 +148,7 @@ class FirstResponderAdmin(admin.ModelAdmin):
         (
             "Location",
             {
-                "fields": ("address",),
+                "fields": ("address", "service_areas", "service_area_count"),
             },
         ),
     )
@@ -166,6 +167,11 @@ class FirstResponderAdmin(admin.ModelAdmin):
     @admin.display(description="Tags")
     def tag_count(self, obj):
         return len(obj.tags or [])
+
+    @admin.display(description="Service Zones")
+    def service_area_count(self, obj):
+        areas = obj.service_areas or []
+        return len(areas) if areas else "-"
 
 
 @admin.register(User)

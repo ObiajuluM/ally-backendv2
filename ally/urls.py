@@ -44,9 +44,9 @@ urlpatterns = [
         FirstResponderListCreateView.as_view(),
         name="firstresponder-list-create",
     ),
-    path(
-        "first-responders/<uuid:pk>/",
-        FirstResponderRetrieveUpdateDestroyView.as_view(),
-        name="firstresponder-retrieve-update-destroy",
-    ),
+    # path(
+    #     "first-responders/<uuid:pk>/",
+    #     FirstResponderRetrieveUpdateDestroyView.as_view(),
+    #     name="firstresponder-retrieve-update-destroy",
+    # ),
 ]

@@ -235,16 +235,24 @@ def _nearest_zone_distance_km(lat, lng, service_areas):
     Only polygons that actually contain the point are considered.
     Returns None if the point isn't inside any polygon.
     """
+    # Start with no winner yet — like saying "I haven't found the closest one yet."
     best = None
     for polygon in service_areas:
+        # A shape needs at least 3 corners to be a real shape (like a triangle).
+        # Also skip this shape if the user isn't even standing inside it.
         if len(polygon) < 3 or not _point_in_polygon(lat, lng, polygon):
             continue
-        # Centroid = average latitude and average longitude of all vertices.
+        # Find the middle of this shape by averaging all its corner points.
+        # Think of it like finding the center of a sandbox by averaging where all the walls are.
         c_lat = sum(p[0] for p in polygon) / len(polygon)
         c_lng = sum(p[1] for p in polygon) / len(polygon)
+        # Measure how far the user is from the center of this shape.
         d = _haversine_km(lat, lng, c_lat, c_lng)
+        # If this is the first shape we've checked, or it's closer than the previous winner,
+        # it becomes the new winner — like keeping track of the shortest straw.
         if best is None or d < best:
             best = d
+    # Give back the distance to the closest shape's center (or None if the user wasn't inside any).
     return best
 
 
@@ -279,7 +287,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        #TODO  MAY Remove to avoid scrapers
+        # TODO  MAY Remove to avoid scrapers
         # ── NO GEO PARAMS ────────────────────────────────────────────────────
         # If neither lat nor lng was provided, just return a plain list
         # (optionally filtered by type). No distance sorting, no radius.
@@ -318,6 +326,8 @@ class FirstResponderListCreateView(ListCreateAPIView):
         # Narrow down to a specific type if the caller asked for one.
         if type_param is not None:
             responders = responders.filter(firstresponder_type=type_param)
+
+        # TODO: may add a check to return only first reponders that are in a 100km radius to save processing time, but this is not a problem for now since we have few responders in the database.
 
         # ── DISTANCE / ZONE FILTERING ────────────────────────────────────────
         # Go through every responder and decide whether to include them.

@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 import uuid
+from geopy.geocoders import Nominatim
 
 
 #
@@ -86,7 +87,25 @@ class Address(models.Model):
     )
 
     def __address_from_latlong(self):
+        print("Running reverse geocoding for address...")
+        # Initialize Nominatim API
+        geolocator = Nominatim(user_agent="ally")
+        if self.latitude is not None and self.longitude is not None:
+            try:
+                location = geolocator.reverse(
+                    (self.latitude, self.longitude),
+                )
+                if location and location.address:
+                    self.full_address = location.address
+            except Exception as e:
+                # Log the error or handle it as needed
+                print(f"Error during reverse geocoding: {e}")
         pass
+
+    def save(self, *args, **kwargs):
+        # Run the reverse-geocode helper every time this record is saved.
+        self.__address_from_latlong()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{ self.latitude} {self.longitude} {self.full_address}"
