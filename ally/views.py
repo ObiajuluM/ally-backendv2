@@ -223,6 +223,52 @@ def _in_any_service_area(lat, lng, service_areas):
     return False
 
 
+def _relevance_score(responder, term):
+    """Score how relevant a first responder is to a plain-text search term.
+
+    Think of it like a judge at a spelling bee awarding points:
+      - The responder's NAME contains the word  → highest reward (+3)
+        (name is the most important field — if someone searches "police",
+         a responder literally called "Police Unit" should rank first)
+      - Their TYPE matches the word             → second best  (+2)
+        (e.g. searching "lawenforcement" should surface law-enforcement responders)
+      - Their DESCRIPTION contains the word     → some reward  (+1)
+        (longer text — a partial match here is weaker evidence)
+      - Any TAG in their tags list matches      → +1 per tag
+        (tags are curated keywords so each one is meaningful)
+
+    The function is case-insensitive, so "Police" == "police" == "POLICE".
+    Returns an integer score (0 = no match at all).
+    """
+    term = term.lower().strip()
+    if not term:
+        # Empty search term — everything is equally relevant.
+        return 1
+
+    score = 0
+
+    # +3 if the responder's name mentions the search word.
+    if responder.name and term in responder.name.lower():
+        score += 3
+
+    # +2 if the responder's top-level type matches.
+    if responder.firstresponder_type and term in responder.firstresponder_type.lower():
+        score += 2
+
+    # +1 if the description contains the word anywhere.
+    if responder.description and term in responder.description.lower():
+        score += 1
+
+    # +1 for every tag that contains the search word.
+    # Tags are short keywords like "police", "hospital", "flood" etc.
+    if responder.tags:
+        for tag in responder.tags:
+            if term in tag.lower():
+                score += 1
+
+    return score
+
+
 def _nearest_zone_distance_km(lat, lng, service_areas):
     """Return the distance (km) from (lat, lng) to the centroid of the closest
     matched service-area polygon.
@@ -273,10 +319,18 @@ class FirstResponderListCreateView(ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         # Read the optional query parameters from the URL.
-        # e.g. /first-responders/?lat=6.52&lng=3.37&type=lawenforcement
+        # Supported combinations:
+        #   ?search=police                          — keyword search only
+        #   ?lat=6.52&lng=3.37                      — geo filter only
+        #   ?lat=6.52&lng=3.37&type=lawenforcement  — geo + type filter
+        #   ?search=hospital&lat=6.52&lng=3.37      — keyword search + geo
+        #   ?search=hospital&lat=6.52&lng=3.37&type=firstaidandmedical — all three
         lat_param = request.query_params.get("lat")
         lng_param = request.query_params.get("lng")
         type_param = request.query_params.get("type")
+        # search_param is a free-text keyword the frontend can pass to find relevant responders.
+        # e.g. "police", "hospital", "flood", "domestic violence"
+        search_param = request.query_params.get("search", "").strip()
 
         # If a type filter was given, make sure it's one of the four valid types.
         if type_param is not None and type_param not in FirstResponderType.values:
@@ -289,13 +343,23 @@ class FirstResponderListCreateView(ListCreateAPIView):
 
         # TODO  MAY Remove to avoid scrapers
         # ── NO GEO PARAMS ────────────────────────────────────────────────────
-        # If neither lat nor lng was provided, just return a plain list
-        # (optionally filtered by type). No distance sorting, no radius.
+        # If neither lat nor lng was provided, return a plain list sorted by
+        # relevance to the search term (if given), otherwise unsorted.
         if lat_param is None and lng_param is None:
             qs = self.get_queryset()
             if type_param is not None:
                 qs = qs.filter(firstresponder_type=type_param)
-            serializer = self.get_serializer(qs, many=True)
+
+            if search_param:
+                # Score every responder and discard ones with zero relevance.
+                # Sort descending so the most relevant appears first.
+                scored = [(r, _relevance_score(r, search_param)) for r in qs]
+                scored = [(r, s) for r, s in scored if s > 0]
+                scored.sort(key=lambda x: x[1], reverse=True)
+                serializer = self.get_serializer([r for r, _ in scored], many=True)
+            else:
+                serializer = self.get_serializer(qs, many=True)
+
             return Response(serializer.data)
 
         # ── GEO PARAMS PROVIDED ──────────────────────────────────────────────
@@ -330,8 +394,22 @@ class FirstResponderListCreateView(ListCreateAPIView):
         # TODO: may add a check to return only first reponders that are in a 100km radius to save processing time, but this is not a problem for now since we have few responders in the database.
 
         # ── DISTANCE / ZONE FILTERING ────────────────────────────────────────
-        # Go through every responder and decide whether to include them.
-        nearby = []
+        # We build two separate lists, then join them so zone matches always
+        # appear BEFORE radius matches in the final response.
+        #
+        # Tier 0 — Zone matches:
+        #   The user is physically inside one of this responder's service-area
+        #   polygons. These are the most directly relevant results.
+        #   Sort key: distance to the matched zone's centroid (closest zone first).
+        #
+        # Tier 1 — Radius fallback:
+        #   No custom zones defined (or the user isn't inside any of them),
+        #   but the responder's registered address is within 200 km.
+        #   These are appended after all zone matches.
+        #   Sort key: straight-line distance to the responder's address.
+        zone_matches = []  # tier 0
+        radius_matches = []  # tier 1
+
         for r in responders:
             # Calculate how far this responder is from the user's location (in km).
             dist = _haversine_km(
@@ -342,19 +420,43 @@ class FirstResponderListCreateView(ListCreateAPIView):
             )
             if r.service_areas:
                 # This responder has custom service zones drawn on the map.
-                # Include them only if the user is inside one of those zones.
-                # Use the distance to the matched zone's centroid for sorting
-                # (not the distance to the responder's address), so the zone
-                # whose centre is closest to the user sorts first.
+                # Check if the user is standing inside any of those zones.
                 zone_dist = _nearest_zone_distance_km(
                     center_lat, center_lng, r.service_areas
                 )
                 if zone_dist is not None:
-                    nearby.append((r, zone_dist))
+                    # User is inside a zone — tier 0 (highest priority).
+                    zone_matches.append((r, zone_dist))
+                elif dist <= 200.0:
+                    # User is NOT in any zone, but the responder's address is
+                    # within 200 km — still useful, just lower priority.
+                    radius_matches.append((r, dist))
             else:
-                # No custom zones — use the default rule: within 200 km.
+                # No custom zones at all — fall back to 200 km radius rule.
                 if dist <= 200.0:
-                    nearby.append((r, dist))
+                    radius_matches.append((r, dist))
+
+        # Tag each entry with its tier (0 = zone match, 1 = radius fallback)
+        # so the sort can keep them in the right order later.
+        nearby = [(r, dist, 0) for r, dist in zone_matches] + [
+            (r, dist, 1) for r, dist in radius_matches
+        ]
+
+        # ── SEARCH FILTERING & SCORING (geo path) ───────────────────────────
+        # If a search term was given, discard responders with zero relevance
+        # and attach a relevance score to each remaining one.
+        # Tuples become (responder, distance_km, tier, relevance_score).
+        if search_param:
+            scored_nearby = []
+            for r, dist, tier in nearby:
+                score = _relevance_score(r, search_param)
+                if score > 0:
+                    scored_nearby.append((r, dist, tier, score))
+            nearby_with_scores = scored_nearby
+        else:
+            # No search term — every responder gets a neutral score of 0.
+            # Sorting will fall back to tier, then distance.
+            nearby_with_scores = [(r, dist, tier, 0) for r, dist, tier in nearby]
 
         # ── GROUPING & SORTING ───────────────────────────────────────────────
         # Organise results into four "buckets", one per responder type.
@@ -363,20 +465,28 @@ class FirstResponderListCreateView(ListCreateAPIView):
             [type_param] if type_param is not None else list(FirstResponderType.values)
         )
         buckets = {ft: [] for ft in active_types}
-        for r, dist in nearby:
+        for r, dist, tier, score in nearby_with_scores:
             ft = r.firstresponder_type
             if ft in buckets:
-                buckets[ft].append((r, dist))
+                buckets[ft].append((r, dist, tier, score))
 
         # Build the final response dict.
-        # Each bucket is sorted closest-first, and every item gets a distance_km field.
+        # Sort key: tier first (zone matches before radius), then highest relevance
+        # score, then closest distance. This guarantees:
+        #   1. Responders whose zone the user is inside → always listed first.
+        #   2. Within each tier, more relevant results rank above less relevant ones.
+        #   3. Equal relevance → closer responder wins.
         result = {}
         for ft, items in buckets.items():
-            items.sort(key=lambda x: x[1])  # sort by distance (smallest first)
+            items.sort(key=lambda x: (x[2], -x[3], x[1]))  # (tier, -score, distance)
             serialized = []
-            for r, dist in items:
+            for r, dist, tier, score in items:
                 data = FirstResponderSerializer(r, context={"request": request}).data
-                data["distance_km"] = round(dist, 3)  # attach the distance in km
+                data["distance_km"] = round(dist, 3)  # how far the zone/address is
+                if search_param:
+                    data["relevance_score"] = (
+                        score  # expose score so frontend can use it
+                    )
                 serialized.append(data)
             result[ft] = serialized
 
