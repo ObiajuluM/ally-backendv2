@@ -36,7 +36,7 @@ SECRET_KEY = env("SECRET_KEY")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG")
+DEBUG = env("DEBUG", default=True)
 
 ALLOWED_HOSTS = (
     [
@@ -194,14 +194,19 @@ AUTH_USER_MODEL = "ally.User"
 
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 
-# Daphne
+# Daphne, I did for websockets, but I don't think I'll be using it for now. I'll keep it here just in case.
 ASGI_APPLICATION = "config.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [
+                (
+                    env("REDIS_HOST", default="127.0.0.1"),
+                    env.int("REDIS_PORT", default=6379),
+                )
+            ],
         },
     },
 }

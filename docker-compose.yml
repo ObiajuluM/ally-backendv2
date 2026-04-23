@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+# docker-compose.yml
+# Think of this file as a floor plan for an apartment building.
+# Each "service" is a separate room (container), and Compose wires them
+# together so they can talk to each other.
+# ---------------------------------------------------------------------------
+
+services:
+
+  # ── web ──────────────────────────────────────────────────────────────────
+  # Our Django app. Built from the Dockerfile in this folder.
+  web:
+    build: .
+    ports:
+      # "host:container" — forward traffic from your machine's port 8000
+      # into the container's port 8000.
+      - "8000:8000"
+    env_file:
+      # Load all the variables from .env and pass them into the container.
+      - .env
+    depends_on:
+      # Don't start the web container until both db AND redis say they're
+      # healthy. Otherwise Django would crash trying to connect too early.
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount our local project folder into /app inside the container.
+      # This means code changes on your laptop are reflected instantly
+      # without rebuilding the image.
+      - .:/app
+    restart: unless-stopped
+
+  # ── db ───────────────────────────────────────────────────────────────────
+  # PostgreSQL database. Stores all our persistent data.
+  db:
+    image: postgres:16-alpine
+    environment:
+      # These are read from .env via the ${VAR} syntax.
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      # Save the database files to a named volume so data survives
+      # container restarts. Without this, every restart wipes the database.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Ask Postgres "are you ready to accept connections?" every 5 seconds.
+      # The web container won't start until this returns OK.
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── redis ─────────────────────────────────────────────────────────────────
+  # Redis is an in-memory data store used as the message broker for
+  # Django Channels (WebSockets). Think of it as a fast post office that
+  # routes messages between connected clients.
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      # "ping" → Redis replies "PONG" when healthy.
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+# Named volumes are managed by Docker and persist across container restarts.
+volumes:
+  postgres_data:

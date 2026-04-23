@@ -1,1 +1,15 @@
 TODO
+
+
+
+
+
+# Production mode (DEBUG=False uses Postgres)
+# Edit .env: set DEBUG=False + fill in DB_NAME/USER/PASSWORD
+docker compose up --build
+
+docker compose build --no-cache && docker compose up
+
+
+# Create superuser
+docker compose exec web python manage.py createsuperuser

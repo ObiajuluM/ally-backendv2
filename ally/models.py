@@ -111,6 +111,7 @@ class Address(models.Model):
         return f"{ self.latitude} {self.longitude} {self.full_address}"
 
 
+# TODO: add trust rating
 class FirstResponder(models.Model):
     id = models.UUIDField(
         primary_key=True,
