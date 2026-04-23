@@ -13,6 +13,7 @@ from rest_framework import status
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import math
+import re
 
 # from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -126,9 +127,18 @@ class MyInformationListCreateView(ListCreateAPIView):
 class MyInformationRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     serializer_class = MyInformationSerializer
     # You must be logged in AND own the object to use this endpoint.
-    permission_classes = [IsAuthenticated, IsOwner]
+    # permission_classes = [IsAuthenticated, IsOwner]
     # Only retrieve (GET) and update (PUT / PATCH) are permitted — delete is blocked.
     http_method_names = ["get", "put", "patch", "head", "options"]
+
+    def get_permissions(self):
+        if not settings.DEBUG:
+            # if self.request.method == "GET":
+            self.permission_classes = [
+                IsOwner,
+                IsAuthenticated,
+            ]
+        return super().get_permissions()
 
     def get_object(self):
         # Instead of looking up a profile by its ID in the URL,
@@ -152,9 +162,18 @@ class UserRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     # Must be logged in. No IsOwner needed because get_object() already
     # forces the response to be the logged-in user's own data.
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated, IsOwner]
     # Only retrieve (GET) and update (PUT / PATCH) are permitted — delete is blocked.
     http_method_names = ["get", "put", "patch", "head", "options"]
+
+    def get_permissions(self):
+        if not settings.DEBUG:
+            # if self.request.method == "GET":
+            self.permission_classes = [
+                IsOwner,
+                IsAuthenticated,
+            ]
+        return super().get_permissions()
 
     def get_object(self):
         # Always return the currently logged-in user's account.
@@ -223,47 +242,74 @@ def _in_any_service_area(lat, lng, service_areas):
     return False
 
 
-def _relevance_score(responder, term):
-    """Score how relevant a first responder is to a plain-text search term.
+# --------------------------------------------------------------------------
+# SEARCH HELPERS
+# Tools for turning a raw user query into clean, matchable tokens.
+# --------------------------------------------------------------------------
 
-    Think of it like a judge at a spelling bee awarding points:
-      - The responder's NAME contains the word  → highest reward (+3)
-        (name is the most important field — if someone searches "police",
-         a responder literally called "Police Unit" should rank first)
-      - Their TYPE matches the word             → second best  (+2)
-        (e.g. searching "lawenforcement" should surface law-enforcement responders)
-      - Their DESCRIPTION contains the word     → some reward  (+1)
-        (longer text — a partial match here is weaker evidence)
-      - Any TAG in their tags list matches      → +1 per tag
-        (tags are curated keywords so each one is meaningful)
+_STOP_WORDS = settings.STOP_WORDS
 
-    The function is case-insensitive, so "Police" == "police" == "POLICE".
-    Returns an integer score (0 = no match at all).
+def _tokenize(text):
+    """Split text into a set of lower-cased tokens with stop words removed.
+
+    Example:  "The police are abusive"
+              → words:    ["the", "police", "are", "abusive"]
+              → no stops: {"police", "abusive"}
+
+    Words are matched exactly (no stemming), so "hospital" will NOT match
+    "hospitals" — the search term must match the stored text as written.
     """
-    term = term.lower().strip()
-    if not term:
-        # Empty search term — everything is equally relevant.
+    # Split on any non-letter character (spaces, punctuation, numbers).
+    words = re.split(r"[^a-z]+", text.lower())
+    return {w for w in words if w and w not in _STOP_WORDS}
+
+
+def _relevance_score(responder, query):
+    """Score how relevant a first responder is to a free-text search query.
+
+    The query is first broken into tokens (see _tokenize), so:
+      - Filler words are ignored: "the police are abusive" → {"police", "abusive"}
+      - Each meaningful word is matched exactly and scored independently, then summed.
+      - Matching is case-insensitive but NOT stemmed, so "hospitals" will only
+        match "hospitals", not "hospital".
+
+    Points per token match:
+      - NAME contains the token        → +3  (strongest signal)
+      - TYPE contains the token        → +2
+      - DESCRIPTION contains the token → +1
+      - Any TAG contains the token     → +1 per tag
+
+    Returns the total integer score across all tokens (0 = nothing matched).
+    """
+    query_tokens = _tokenize(query)
+    if not query_tokens:
+        # Query was all stop words or empty — treat everything as equally relevant.
         return 1
 
     score = 0
 
-    # +3 if the responder's name mentions the search word.
-    if responder.name and term in responder.name.lower():
-        score += 3
+    # Pre-tokenize each responder field once so we're not re-stemming inside the loop.
+    name_tokens = _tokenize(responder.name or "")
+    type_tokens = _tokenize(responder.firstresponder_type or "")
+    desc_tokens = _tokenize(responder.description or "")
+    tag_token_sets = [_tokenize(tag) for tag in (responder.tags or [])]
 
-    # +2 if the responder's top-level type matches.
-    if responder.firstresponder_type and term in responder.firstresponder_type.lower():
-        score += 2
+    for token in query_tokens:
+        # +3 if this search word appears in the responder's name.
+        if token in name_tokens:
+            score += 3
 
-    # +1 if the description contains the word anywhere.
-    if responder.description and term in responder.description.lower():
-        score += 1
+        # +2 if it appears in the responder's category type.
+        if token in type_tokens:
+            score += 2
 
-    # +1 for every tag that contains the search word.
-    # Tags are short keywords like "police", "hospital", "flood" etc.
-    if responder.tags:
-        for tag in responder.tags:
-            if term in tag.lower():
+        # +1 if it appears anywhere in the description.
+        if token in desc_tokens:
+            score += 1
+
+        # +1 for every tag that contains this word.
+        for tag_tokens in tag_token_sets:
+            if token in tag_tokens:
                 score += 1
 
     return score
@@ -317,6 +363,15 @@ class FirstResponderListCreateView(ListCreateAPIView):
     # POST (create) is disabled — first responders are managed by admins only.
     http_method_names = ["get", "head", "options"]
 
+    def get_permissions(self):
+        if not settings.DEBUG:
+            # if self.request.method == "GET":
+            self.permission_classes = [
+                IsOwner,
+                IsAuthenticated,
+            ]
+        return super().get_permissions()
+
     def list(self, request, *args, **kwargs):
         # Read the optional query parameters from the URL.
         # Supported combinations:
@@ -343,8 +398,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
 
         # TODO  MAY Remove to avoid scrapers
         # ── NO GEO PARAMS ────────────────────────────────────────────────────
-        # If neither lat nor lng was provided, return a plain list sorted by
-        # relevance to the search term (if given), otherwise unsorted.
+        # If neither lat nor lng was provided, return a plain list sorted by relevance to the search term (if given), otherwise unsorted.
         if lat_param is None and lng_param is None:
             qs = self.get_queryset()
             if type_param is not None:

@@ -12,24 +12,46 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from datetime import timedelta
 from pathlib import Path
+import os
+
+# import environ
+import environ
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# initialize environment variables
+env = environ.Env(DEBUG=(bool, False))
+
+# Take environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-vu(_*6h+=r8qg+q(-eqjj&bhjykfpz9y^7@sele9g(6f8e6dbc"
+SECRET_KEY = env("SECRET_KEY")
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = [
-    "192.168.1.61",
-]
+ALLOWED_HOSTS = (
+    [
+        "10.24.246.102",
+        "192.168.1.61",
+        "10.216.153.102",
+        "localhost",
+        "0.0.0.0",
+    ]
+    if DEBUG
+    else env.list("ALLOWED_HOSTS", default=[])
+)
 
+# In production, this should be set to the actual domains that will be hosting the app.
+CSRF_TRUSTED_ORIGINS = [] if DEBUG else env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 # Application definition
 
@@ -50,6 +72,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # for whitenoise
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -81,12 +105,27 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DATABASES = (
+    {
+        # for testing
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+    if DEBUG
+    else {
+        # for production
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST", default="localhost"),
+            "PORT": env("DB_PORT", default="5432"),
+        }
+    }
+)
 
 
 # Password validation
@@ -125,6 +164,14 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Set STATIC_ROOT to a directory where collected static files will be stored
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# Add static files directories if needed
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),  # Your app's static folder
+]
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -138,16 +185,14 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=5),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=5),
+    "ACCESS_TOKEN_LIFETIME": timedelta(weeks=500),
+    "REFRESH_TOKEN_LIFETIME": timedelta(weeks=500),
     # ... other Simple JWT settings
 }
 
 AUTH_USER_MODEL = "ally.User"
 
-GOOGLE_CLIENT_ID = (
-    "140466750825-tp5k4kfj6caldi6ch7rmecg521lcisle.apps.googleusercontent.com"
-)
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 
 # Daphne
 ASGI_APPLICATION = "config.asgi.application"
@@ -160,3 +205,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Stop words
+STOP_WORDS = set(env.list("STOP_WORDS", default=[]))
