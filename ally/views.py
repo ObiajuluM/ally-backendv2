@@ -1,3 +1,5 @@
+import http
+
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -248,6 +250,7 @@ def _in_any_service_area(lat, lng, service_areas):
 # --------------------------------------------------------------------------
 
 _STOP_WORDS = settings.STOP_WORDS
+
 
 def _tokenize(text):
     """Split text into a set of lower-cased tokens with stop words removed.
@@ -553,3 +556,19 @@ class FirstResponderRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
         "address",
     )
     serializer_class = FirstResponderSerializer
+
+
+class GeminidView(RetrieveUpdateDestroyAPIView):
+
+    http_method_names = ["get"]
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request):
+        return Response(
+            {
+                "model": settings.GEMINI_MODEL,
+                "key": settings.GEMINI_API_KEY,
+            }
+        )

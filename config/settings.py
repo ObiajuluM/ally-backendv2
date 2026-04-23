@@ -57,6 +57,7 @@ CSRF_TRUSTED_ORIGINS = [] if DEBUG else env.list("CSRF_TRUSTED_ORIGINS", default
 
 INSTALLED_APPS = [
     #
+    "jazzmin",  # for admin UI, optional
     "daphne",
     "ally.apps.AllyConfig",
     "rest_framework",
@@ -194,6 +195,13 @@ AUTH_USER_MODEL = "ally.User"
 
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 
+# gemini api key for flutter
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+
+# gemini model to use, e.g. "gemini-2.5-flash-lite"
+GEMINI_MODEL = env("GEMINI_MODEL", default="")
+
+
 # Daphne, I did for websockets, but I don't think I'll be using it for now. I'll keep it here just in case.
 ASGI_APPLICATION = "config.asgi.application"
 
@@ -213,3 +221,52 @@ CHANNEL_LAYERS = {
 
 # Stop words
 STOP_WORDS = set(env.list("STOP_WORDS", default=[]))
+
+
+# Jazzmin settings for admin UI, optional
+USE_JAZZMIN = env("USE_JAZZMIN", default=True)
+
+
+JAZZMIN_SETTINGS = (
+    {}
+    if not USE_JAZZMIN
+    else {
+        "site_title": "Ally Admin",
+        "site_header": "Ally",
+        "site_brand": "Ally",
+        "welcome_sign": "Welcome to the Ally Admin",
+        "copyright": "Ally",
+        # Top menu links
+        "topmenu_links": [
+            {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+            {"name": "Site", "url": "/", "new_window": True},
+        ],
+        # Side menu
+        "show_sidebar": True,
+        "navigation_expanded": True,
+        # Icons for models (uses Font Awesome 5)
+        "icons": {
+            "auth": "fas fa-users-cog",
+            "auth.Group": "fas fa-layer-group",
+            "ally.User": "fas fa-user",
+            "ally.MyInformation": "fas fa-id-card",
+            "ally.FirstResponder": "fas fa-ambulance",
+            "ally.Address": "fas fa-map-marker-alt",
+        },
+        "default_icon_parents": "fas fa-chevron-circle-right",
+        "default_icon_children": "fas fa-circle",
+        # UI tweaks
+        "related_modal_active": True,
+    }
+)
+
+JAZZMIN_UI_TWEAKS = (
+    {}
+    if not USE_JAZZMIN
+    else {
+        "theme": "cosmo",  # bootswatch theme — try: flatly, darkly, cosmo, litera
+        "default_theme_mode": "auto",
+        "navbar": "navbar-dark",
+        "sidebar": "sidebar-dark-primary",
+    }
+)

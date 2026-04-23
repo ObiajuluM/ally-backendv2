@@ -1,11 +1,9 @@
 from django.urls import path
 from ally.views import (
     FirstResponderListCreateView,
-    FirstResponderRetrieveUpdateDestroyView,
+    GeminidView,
     GoogleAuthView,
-    MyInformationListCreateView,
     MyInformationRetrieveUpdateDestroyView,
-    UserListCreateView,
     UserRetrieveUpdateDestroyView,
 )
 
@@ -49,4 +47,7 @@ urlpatterns = [
     #     FirstResponderRetrieveUpdateDestroyView.as_view(),
     #     name="firstresponder-retrieve-update-destroy",
     # ),
+    #
+    # Gemini
+    path("geminid/", GeminidView.as_view(), name="geminid"),
 ]

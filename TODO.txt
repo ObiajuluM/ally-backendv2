@@ -1,9 +1,5 @@
 TODO
 
-
-
-
-
 # Production mode (DEBUG=False uses Postgres)
 # Edit .env: set DEBUG=False + fill in DB_NAME/USER/PASSWORD
 docker compose up --build
@@ -13,3 +9,17 @@ docker compose build --no-cache && docker compose up
 
 # Create superuser
 docker compose exec web python manage.py createsuperuser
+
+
+
+# Basic — 10 users, 100 responders
+docker compose exec web python manage.py seed
+
+# Custom counts
+docker compose exec web python manage.py seed --users 20 --responders 50
+
+# Cluster responders around a specific location
+docker compose exec web python manage.py seed --cluster-lat 4.8948 --cluster-lng 6.9719
+
+# Repeatable data (same output every time)
+docker compose exec web python manage.py seed --seed 42

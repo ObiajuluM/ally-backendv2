@@ -13,9 +13,17 @@ admin.site.index_title = "Operations Dashboard"
 
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
-    list_display = ("id", "full_address", "latitude", "longitude")
+    list_display = (
+        "id",
+        "full_address",
+        "latitude",
+        "longitude",
+        "created_at",
+        "updated_at",
+    )
     search_fields = ("id", "full_address")
-    ordering = ("full_address", "id")
+    ordering = ("-created_at",)
+    readonly_fields = ("created_at", "updated_at")
     list_per_page = 25
     empty_value_display = "-"
 
@@ -32,6 +40,8 @@ class MyInformationAdmin(admin.ModelAdmin):
         "linked_user",
         "address_summary",
         "trusted_contacts_count",
+        "created_at",
+        "updated_at",
     )
     list_filter = ("gender", "organ_donor", "is_pregnant")
     search_fields = (
@@ -44,7 +54,7 @@ class MyInformationAdmin(admin.ModelAdmin):
     )
     list_select_related = ("address", "user")
     autocomplete_fields = ("address",)
-    readonly_fields = ("id", "linked_user")
+    readonly_fields = ("id", "linked_user", "created_at", "updated_at")
     fieldsets = (
         (
             "Basic Info",
@@ -71,6 +81,12 @@ class MyInformationAdmin(admin.ModelAdmin):
             "Contacts And Address",
             {
                 "fields": ("address", "trusted_contacts"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
             },
         ),
     )
@@ -114,12 +130,20 @@ class FirstResponderAdmin(admin.ModelAdmin):
         "address_summary",
         "tag_count",
         "service_area_count",
+        "created_at",
+        "updated_at",
     )
     list_filter = ("firstresponder_type", "organization_type")
     search_fields = ("id", "name", "description", "address__full_address")
     list_select_related = ("address",)
     autocomplete_fields = ("address",)
-    readonly_fields = ("id", "tag_count", "service_area_count")
+    readonly_fields = (
+        "id",
+        "tag_count",
+        "service_area_count",
+        "created_at",
+        "updated_at",
+    )
     fieldsets = (
         (
             "Overview",
@@ -149,6 +173,12 @@ class FirstResponderAdmin(admin.ModelAdmin):
             "Location",
             {
                 "fields": ("address", "service_areas", "service_area_count"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
             },
         ),
     )
@@ -184,6 +214,8 @@ class UserAdmin(BaseUserAdmin):
         "my_information_link",
         "is_staff",
         "is_active",
+        "date_joined",
+        "updated_at",
     )
     list_filter = ("is_staff", "is_superuser", "is_active")
     search_fields = (
@@ -197,7 +229,7 @@ class UserAdmin(BaseUserAdmin):
     ordering = ("email",)
     list_select_related = ("my_information",)
     autocomplete_fields = ("my_information",)
-    readonly_fields = ("id", "date_joined", "last_login")
+    readonly_fields = ("id", "date_joined", "last_login", "updated_at")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         (
@@ -228,7 +260,7 @@ class UserAdmin(BaseUserAdmin):
         (
             "Important Dates",
             {
-                "fields": ("last_login", "date_joined"),
+                "fields": ("last_login", "date_joined", "updated_at"),
             },
         ),
     )

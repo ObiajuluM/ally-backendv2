@@ -107,6 +107,12 @@ class Address(models.Model):
         self.__address_from_latlong()
         super().save(*args, **kwargs)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # class Meta:
+    #     ordering = ["-created_at"]
+
     def __str__(self):
         return f"{ self.latitude} {self.longitude} {self.full_address}"
 
@@ -208,6 +214,12 @@ class FirstResponder(models.Model):
         help_text="List of polygons, each a list of [lat, lng] pairs defining a service area.",
     )
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # class Meta:
+    #     ordering = ["-created_at"]
+
     def __str__(self):
         return self.name or "Unnamed First Responder"
 
@@ -253,6 +265,12 @@ class MyInformation(models.Model):
         help_text="List of trusted contacts (e.g., [{'name': 'John Doe', 'phone': '+1234567890'}])",
     )
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # class Meta:
+    #     ordering = ["-created_at"]
+
     def __str__(self):
         return self.name or "My information"
 
@@ -271,10 +289,15 @@ class User(AbstractUser):
         MyInformation, on_delete=models.CASCADE, null=True, blank=True
     )
 
+    updated_at = models.DateTimeField(auto_now=True)
+
     USERNAME_FIELD = "email"  # Set email as the unique identifier for authentication
     REQUIRED_FIELDS = [
         "username"
     ]  # Required when creating a superuser, but not used for authentication
+
+    # class Meta(AbstractUser.Meta):
+    #     ordering = ["-date_joined"]
 
     def __str__(self):
         return f"{self.username} --- {self.email}"
