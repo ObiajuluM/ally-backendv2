@@ -1,5 +1,8 @@
 TODO
 
+create a view for x, website and whatsapp
+
+
 # Production mode (DEBUG=False uses Postgres)
 # Edit .env: set DEBUG=False + fill in DB_NAME/USER/PASSWORD
 docker compose up --build

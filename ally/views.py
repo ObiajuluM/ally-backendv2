@@ -570,5 +570,8 @@ class GeminidView(RetrieveUpdateDestroyAPIView):
             {
                 "model": settings.GEMINI_MODEL,
                 "key": settings.GEMINI_API_KEY,
+                "x": settings.X_URL,
+                "website": settings.WEBSITE_URL,
+                "whatsapp": settings.WHATSAPP_URL,
             }
         )

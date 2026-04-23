@@ -201,6 +201,11 @@ GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 # gemini model to use, e.g. "gemini-2.5-flash-lite"
 GEMINI_MODEL = env("GEMINI_MODEL", default="")
 
+# social / contact links
+X_URL = env("X_URL")
+WEBSITE_URL = env("WEBSITE_URL")
+WHATSAPP_URL = env("WHATSAPP_URL")
+
 
 # Daphne, I did for websockets, but I don't think I'll be using it for now. I'll keep it here just in case.
 ASGI_APPLICATION = "config.asgi.application"
