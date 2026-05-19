@@ -205,6 +205,7 @@ GEMINI_MODEL = env("GEMINI_MODEL", default="")
 X_URL = env("X_URL")
 WEBSITE_URL = env("WEBSITE_URL")
 WHATSAPP_URL = env("WHATSAPP_URL")
+YOUTUBE_PLAYLIST = env("YOUTUBE_PLAYLIST")
 
 
 # Daphne, I did for websockets, but I don't think I'll be using it for now. I'll keep it here just in case.

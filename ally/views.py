@@ -573,5 +573,6 @@ class GeminidView(RetrieveUpdateDestroyAPIView):
                 "x": settings.X_URL,
                 "website": settings.WEBSITE_URL,
                 "whatsapp": settings.WHATSAPP_URL,
+                "youtube": settings.YOUTUBE_PLAYLIST,
             }
         )
