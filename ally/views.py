@@ -24,7 +24,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from rest_framework.permissions import BasePermission
 
-
 # --------------------------------------------------------------------------
 # PERMISSIONS
 # Think of permissions like a bouncer at a door.
@@ -370,7 +369,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
         if not settings.DEBUG:
             # if self.request.method == "GET":
             self.permission_classes = [
-                IsOwner,
+                # IsOwner,
                 IsAuthenticated,
             ]
         return super().get_permissions()
@@ -399,7 +398,6 @@ class FirstResponderListCreateView(ListCreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # TODO  MAY Remove to avoid scrapers
         # ── NO GEO PARAMS ────────────────────────────────────────────────────
         # If neither lat nor lng was provided, return a plain list sorted by relevance to the search term (if given), otherwise unsorted.
         if lat_param is None and lng_param is None:
@@ -417,7 +415,13 @@ class FirstResponderListCreateView(ListCreateAPIView):
             else:
                 serializer = self.get_serializer(qs, many=True)
 
-            return Response(serializer.data)
+            # return Response(serializer.data)
+            # the above return was emptied out to avoid scrapers
+            return (
+                Response(serializer.data)
+                if settings.DEBUG
+                else Response(status=status.HTTP_204_NO_CONTENT)
+            )
 
         # ── GEO PARAMS PROVIDED ──────────────────────────────────────────────
         # Both lat AND lng must be given together — one without the other is an error.
@@ -447,8 +451,6 @@ class FirstResponderListCreateView(ListCreateAPIView):
         # Narrow down to a specific type if the caller asked for one.
         if type_param is not None:
             responders = responders.filter(firstresponder_type=type_param)
-
-        # TODO: may add a check to return only first reponders that are in a 100km radius to save processing time, but this is not a problem for now since we have few responders in the database.
 
         # ── DISTANCE / ZONE FILTERING ────────────────────────────────────────
         # We build two separate lists, then join them so zone matches always
