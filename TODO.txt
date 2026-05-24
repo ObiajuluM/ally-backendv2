@@ -13,7 +13,6 @@ docker compose build --no-cache && docker compose up
 docker compose exec web python manage.py createsuperuser
 
 
-
 # Basic — 10 users, 100 responders
 docker compose exec web python manage.py seed
 
@@ -61,3 +60,4 @@ docker build -t <your-username>/ally-backend:latest .
 docker push <your-username>/ally-backend:latest
 
 One security note: your .env file contains real secrets (API keys, DB password,
+

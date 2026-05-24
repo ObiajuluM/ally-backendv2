@@ -12,9 +12,9 @@ services:
   web:
     build: .
     ports:
-      # "host:container" — forward traffic from your machine's port 8000
+      # "host:container" — forward traffic from your machine's port 8003
       # into the container's port 8000.
-      - "8000:8000"
+      - "8003:8000"
     env_file:
       # Load all the variables from .env and pass them into the container.
       - .env
