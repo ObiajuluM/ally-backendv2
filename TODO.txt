@@ -1,5 +1,14 @@
 TODO
 https://geojson.io/next/
+USE: PostGIS FOR OPTIMIZATION
+        Right now distance calculations happen in Python loops.
+        With many responders this becomes slow.
+        PostGIS would allow:
+        polygon containment
+        distance calculations
+        nearest-neighbor queries
+        directly in SQL.
+        Huge performance boost.
 
 
 # Production mode (DEBUG=False uses Postgres)
