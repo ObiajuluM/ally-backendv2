@@ -53,7 +53,6 @@ ALLOWED_HOSTS = (
 CSRF_TRUSTED_ORIGINS = [] if DEBUG else env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 # Application definition
-
 INSTALLED_APPS = [
     #
     "jazzmin",  # for admin UI, optional
@@ -261,7 +260,7 @@ JAZZMIN_SETTINGS = (
         "default_icon_parents": "fas fa-chevron-circle-right",
         "default_icon_children": "fas fa-circle",
         # UI tweaks
-        "related_modal_active": True,
+        "related_modal_active": False,
     }
 )
 
