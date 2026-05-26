@@ -3,6 +3,9 @@ import json
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db import connection
+from django.db.models import Func, IntegerField, Value
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.html import escape
@@ -398,6 +401,42 @@ class MyInformationAdmin(admin.ModelAdmin):
         return len(obj.trusted_contacts or [])
 
 
+class ServiceZoneCountFilter(admin.SimpleListFilter):
+    title = "service zones"
+    parameter_name = "service_zones"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("0", "None"),
+            ("1", "1"),
+            ("2", "2"),
+            ("3plus", "3+"),
+        ]
+
+    def queryset(self, request, queryset):
+        fn = (
+            "jsonb_array_length"
+            if connection.vendor == "postgresql"
+            else "JSON_ARRAY_LENGTH"
+        )
+        annotated = queryset.annotate(
+            _szc=Coalesce(
+                Func("service_areas", function=fn, output_field=IntegerField()),
+                Value(0),
+            )
+        )
+        val = self.value()
+        if val == "0":
+            return annotated.filter(_szc=0)
+        if val == "1":
+            return annotated.filter(_szc=1)
+        if val == "2":
+            return annotated.filter(_szc=2)
+        if val == "3plus":
+            return annotated.filter(_szc__gte=3)
+        return queryset
+
+
 @admin.register(FirstResponder)
 class FirstResponderAdmin(admin.ModelAdmin):
     form = FirstResponderAdminForm
@@ -414,7 +453,7 @@ class FirstResponderAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    list_filter = ("firstresponder_type", "organization_type")
+    list_filter = ("firstresponder_type", "organization_type", ServiceZoneCountFilter)
     search_fields = ("id", "name", "description", "address__full_address")
     list_select_related = ("address",)
     autocomplete_fields = ("address",)
@@ -479,7 +518,22 @@ class FirstResponderAdmin(admin.ModelAdmin):
     def tag_count(self, obj):
         return len(obj.tags or [])
 
-    @admin.display(description="Service Zones")
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        fn = (
+            "jsonb_array_length"
+            if connection.vendor == "postgresql"
+            else "JSON_ARRAY_LENGTH"
+        )
+        return qs.annotate(
+            _service_area_count=Func(
+                "service_areas",
+                function=fn,
+                output_field=IntegerField(),
+            )
+        )
+
+    @admin.display(description="Service Zones", ordering="_service_area_count")
     def service_area_count(self, obj):
         areas = obj.service_areas or []
         return len(areas) if areas else "-"
