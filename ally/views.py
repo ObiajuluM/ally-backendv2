@@ -463,7 +463,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
         #
         # Tier 1 — Radius fallback:
         #   No custom zones defined (or the user isn't inside any of them),
-        #   but the responder's registered address is within 200 km.
+        #   but the responder's registered address is within 10 km.
         #   These are appended after all zone matches.
         #   Sort key: straight-line distance to the responder's address.
         zone_matches = []  # tier 0
@@ -486,13 +486,13 @@ class FirstResponderListCreateView(ListCreateAPIView):
                 if zone_dist is not None:
                     # User is inside a zone — tier 0 (highest priority).
                     zone_matches.append((r, zone_dist))
-                elif dist <= 200.0:
+                elif dist <= 10.0:
                     # User is NOT in any zone, but the responder's address is
-                    # within 200 km — still useful, just lower priority.
+                    # within 10 km — still useful, just lower priority.
                     radius_matches.append((r, dist))
             else:
-                # No custom zones at all — fall back to 200 km radius rule.
-                if dist <= 200.0:
+                # No custom zones at all — fall back to 10 km radius rule.
+                if dist <= 10.0:
                     radius_matches.append((r, dist))
 
         # Tag each entry with its tier (0 = zone match, 1 = radius fallback)
