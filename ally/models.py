@@ -24,44 +24,44 @@ class OrganizationType(models.TextChoices):
 
 # Tags related to types of crises or intervention
 class FirstResponderTag(models.TextChoices):
-    GENERAL = "general"
-    POLICE = "police"
-    MILITARY = "military"
-    ROADSAFETY = "roadsafety"
-    FIRESERVICE = "fireservice"
-    LAWENFORCEMENT = "lawenforcement"
-    HOSPITAL = "hospital"
-    GOVERNMENT = "government"
     ABUSE = "abuse"
-    DRUG = "drug"
-    FOOD = "food"
-    HEALTH = "health"
-    TRAFFICKING = "trafficking"
-    LAW = "law"
-    ENFORCEMENT = "enforcement"
-    SAFETY = "safety"
-    ARMEDROBBERY = "armedrobbery"
-    HIGHWAYWAY = "highwayway"
-    HARASSMENT = "harassment"
-    POLICEHARASSMENT = "policeharassment"
-    POLICEBRUTALITY = "policebrutality"
-    DOMESTICVIOLENCE = "domesticviolence"
-    FIGHT = "fight"
-    ARMY = "army"
-    MILITARYBRUTALITY = "militarybrutality"
-    VIOLENCE = "violence"
-    BEATING = "beating"
     ACCIDENT = "accident"
-    DISASTER = "disaster"
-    PUBLICGOOD = "publicgood"
-    FIRE = "fire"
-    FLOOD = "flood"
-    KIDNAPPING = "kidnapping"
-    GUN = "gun"
-    TERROR = "terror"
-    HELP = "help"
-    CULT = "cult"
+    ARMEDROBBERY = "armedrobbery"
+    ARMY = "army"
     ATTACK = "attack"
+    BEATING = "beating"
+    CULT = "cult"
+    DISASTER = "disaster"
+    DOMESTICVIOLENCE = "domesticviolence"
+    DRUG = "drug"
+    ENFORCEMENT = "enforcement"
+    FIGHT = "fight"
+    FIRE = "fire"
+    FIRESERVICE = "fireservice"
+    FLOOD = "flood"
+    FOOD = "food"
+    GENERAL = "general"
+    GOVERNMENT = "government"
+    GUN = "gun"
+    HARASSMENT = "harassment"
+    HEALTH = "health"
+    HELP = "help"
+    HIGHWAYWAY = "highwayway"
+    HOSPITAL = "hospital"
+    KIDNAPPING = "kidnapping"
+    LAW = "law"
+    LAWENFORCEMENT = "lawenforcement"
+    MILITARY = "military"
+    MILITARYBRUTALITY = "militarybrutality"
+    POLICE = "police"
+    POLICEBRUTALITY = "policebrutality"
+    POLICEHARASSMENT = "policeharassment"
+    PUBLICGOOD = "publicgood"
+    ROADSAFETY = "roadsafety"
+    SAFETY = "safety"
+    TERROR = "terror"
+    TRAFFICKING = "trafficking"
+    VIOLENCE = "violence"
 
 
 class Address(models.Model):
@@ -69,14 +69,14 @@ class Address(models.Model):
         blank=True,
         null=True,
         help_text="Latitude of location",
-        max_digits=9,
+        max_digits=11,
         decimal_places=6,
     )
     longitude = models.DecimalField(
         blank=True,
         null=True,
         help_text="Longitude of location",
-        max_digits=9,
+        max_digits=11,
         decimal_places=6,
     )
     full_address = models.CharField(

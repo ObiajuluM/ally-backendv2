@@ -105,57 +105,43 @@ _SA_JS = """
   function saSerialize(containerId) {
     var container = document.getElementById(containerId);
     var data = [];
-    container.querySelectorAll('.sa-zone').forEach(function (zone) {
-      var points = [];
-      var lats = zone.querySelectorAll('.sa-lat');
-      var lngs = zone.querySelectorAll('.sa-lng');
-      for (var i = 0; i < lats.length; i++) {
-        var lat = parseFloat(lats[i].value);
-        var lng = parseFloat(lngs[i].value);
-        if (!isNaN(lat) && !isNaN(lng)) points.push([lat, lng]);
-      }
-      if (points.length) data.push(points);
+    container.querySelectorAll('.sa-zone-input').forEach(function (ta) {
+      var val = ta.value.trim();
+      if (!val) return;
+      try {
+        var zone = JSON.parse(val);
+        if (Array.isArray(zone)) data.push(zone);
+      } catch (e) { /* skip invalid */ }
     });
     return JSON.stringify(data);
   }
 
-  function makePoint(lat, lng) {
-    var d = document.createElement('div');
-    d.className = 'sa-point';
-    d.style.cssText = 'display:flex;gap:6px;margin-bottom:4px;align-items:center';
-    d.innerHTML =
-      '<input type="text" class="sa-lat" value="' + (lat !== undefined ? lat : '') + '" placeholder="lat" style="width:45%;padding:4px 6px">' +
-      '<input type="text" class="sa-lng" value="' + (lng !== undefined ? lng : '') + '" placeholder="lng" style="flex:1;padding:4px 6px">' +
-      '<button type="button" onclick="_saRemovePoint(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;line-height:1">&#8722;</button>';
-    return d;
+  function renumberZones(container) {
+    container.querySelectorAll('.sa-zone').forEach(function (zone, i) {
+      var lbl = zone.querySelector('.sa-zone-label');
+      if (lbl) lbl.textContent = 'Zone ' + (i + 1) + ':';
+    });
   }
 
-  function makeZone(idx) {
-    var zone = document.createElement('div');
-    zone.className = 'sa-zone';
-    zone.style.cssText = 'border:1px solid #444;padding:10px;margin-bottom:10px;border-radius:4px;background:#2a2a2a;color:#eee';
-    zone.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-        '<strong>Zone ' + idx + '</strong>' +
-        '<button type="button" onclick="_saRemoveZone(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:13px">&#8722; Remove Zone</button>' +
-      '</div>' +
-      '<div class="sa-points"></div>' +
-      '<button type="button" onclick="_saAddPoint(this)" style="margin-top:4px;cursor:pointer;padding:2px 8px">&#43; Add Point</button>';
-    zone.querySelector('.sa-points').appendChild(makePoint());
-    return zone;
-  }
-
-  window._saRemoveZone = function (btn) { btn.closest('.sa-zone').remove(); };
-  window._saRemovePoint = function (btn) { btn.closest('.sa-point').remove(); };
-
-  window._saAddPoint = function (btn) {
-    btn.closest('.sa-zone').querySelector('.sa-points').appendChild(makePoint());
+  window._saRemoveZone = function (btn) {
+    var zone = btn.closest('.sa-zone');
+    var container = zone.closest('.sa-container');
+    zone.remove();
+    renumberZones(container);
   };
 
   window._saAddZone = function (containerId) {
     var container = document.getElementById(containerId);
+    var zonesDiv = container.querySelector('.sa-zones');
     var idx = container.querySelectorAll('.sa-zone').length + 1;
-    container.insertBefore(makeZone(idx), container.lastElementChild);
+    var div = document.createElement('div');
+    div.className = 'sa-zone';
+    div.style.cssText = 'display:flex;align-items:flex-start;gap:8px;margin-bottom:8px';
+    div.innerHTML =
+      '<label class="sa-zone-label" style="min-width:60px;padding-top:6px;font-weight:bold">Zone ' + idx + ':</label>' +
+      '<textarea class="sa-zone-input" rows="3" style="flex:1;font-family:monospace;padding:4px 6px" placeholder="[[lat, lng], [lat, lng], ...]"></textarea>' +
+      '<button type="button" onclick="_saRemoveZone(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;padding-top:4px">&#8722;</button>';
+    zonesDiv.appendChild(div);
   };
 
   function attachHandler(container) {
@@ -186,32 +172,13 @@ _SA_JS = """
 
 
 class ServiceAreasWidget(forms.Widget):
-    def _zone_html(self, zone_idx, points):
-        pts = ""
-        for lat, lng in points or []:
-            pts += (
-                '<div class="sa-point" style="display:flex;gap:6px;margin-bottom:4px;align-items:center">'
-                f'<input type="text" class="sa-lat" value="{escape(str(lat))}" placeholder="lat" style="width:45%;padding:4px 6px">'
-                f'<input type="text" class="sa-lng" value="{escape(str(lng))}" placeholder="lng" style="flex:1;padding:4px 6px">'
-                '<button type="button" onclick="_saRemovePoint(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;line-height:1">&#8722;</button>'
-                "</div>"
-            )
-        if not pts:
-            pts = (
-                '<div class="sa-point" style="display:flex;gap:6px;margin-bottom:4px;align-items:center">'
-                '<input type="text" class="sa-lat" placeholder="lat" style="width:45%;padding:4px 6px">'
-                '<input type="text" class="sa-lng" placeholder="lng" style="flex:1;padding:4px 6px">'
-                '<button type="button" onclick="_saRemovePoint(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;line-height:1">&#8722;</button>'
-                "</div>"
-            )
+    def _zone_row(self, idx, zone_value):
+        val = json.dumps(zone_value) if zone_value else ""
         return (
-            '<div class="sa-zone" style="border:1px solid #444;padding:10px;margin-bottom:10px;border-radius:4px;background:#2a2a2a;color:#eee">'
-            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-            f"<strong>Zone {zone_idx}</strong>"
-            '<button type="button" onclick="_saRemoveZone(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:13px">&#8722; Remove Zone</button>'
-            "</div>"
-            f'<div class="sa-points">{pts}</div>'
-            '<button type="button" onclick="_saAddPoint(this)" style="margin-top:4px;cursor:pointer;padding:2px 8px">&#43; Add Point</button>'
+            '<div class="sa-zone" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">'
+            f'<label class="sa-zone-label" style="min-width:60px;padding-top:6px;font-weight:bold">Zone {idx}:</label>'
+            f'<textarea class="sa-zone-input" rows="3" style="flex:1;font-family:monospace;padding:4px 6px" placeholder="[[lat, lng], [lat, lng], ...]">{escape(val)}</textarea>'
+            '<button type="button" onclick="_saRemoveZone(this)" style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;padding-top:4px">&#8722;</button>'
             "</div>"
         )
 
@@ -225,12 +192,14 @@ class ServiceAreasWidget(forms.Widget):
             value = []
 
         cid = "sa_" + name.replace("-", "_").replace(".", "_")
-        zones = "".join(self._zone_html(i + 1, z) for i, z in enumerate(value))
-        add_btn = f'<button type="button" onclick="_saAddZone(\'{cid}\')" style="cursor:pointer;padding:2px 10px">&#43; Add Zone</button>'
+        zones_html = "".join(self._zone_row(i + 1, z) for i, z in enumerate(value))
+        if not zones_html:
+            zones_html = self._zone_row(1, None)
+        add_btn = f'<button type="button" onclick="_saAddZone(\'{cid}\')" style="cursor:pointer;padding:2px 10px;margin-top:4px">&#43; Add Zone</button>'
         hidden = f'<input type="hidden" name="{name}_json" class="sa-hidden">'
 
         return mark_safe(
-            f'<div id="{cid}" class="sa-container">{zones}{add_btn}{hidden}</div>{_SA_JS}'
+            f'<div id="{cid}" class="sa-container"><div class="sa-zones">{zones_html}</div>{add_btn}{hidden}</div>{_SA_JS}'
         )
 
     def value_from_datadict(self, data, files, name):
