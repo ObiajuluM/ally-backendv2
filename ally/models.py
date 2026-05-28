@@ -65,19 +65,25 @@ class FirstResponderTag(models.TextChoices):
 
 
 class Address(models.Model):
+    # id = models.UUIDField(
+    #     primary_key=True,
+    #     default=uuid.uuid4,
+    #     editable=False,
+    # )
+
     latitude = models.DecimalField(
         blank=True,
         null=True,
         help_text="Latitude of location",
         max_digits=11,
-        decimal_places=6,
+        decimal_places=7,
     )
     longitude = models.DecimalField(
         blank=True,
         null=True,
         help_text="Longitude of location",
         max_digits=11,
-        decimal_places=6,
+        decimal_places=7,
     )
     full_address = models.CharField(
         max_length=255,

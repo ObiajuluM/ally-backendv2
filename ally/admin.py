@@ -408,13 +408,28 @@ class ServiceZoneCountFilter(admin.SimpleListFilter):
 
 @admin.action(description="Duplicate selected first responders")
 def duplicate_first_responders(modeladmin, request, queryset):
+    # Capture the count before the loop because pk=None mutates the objects
     count = queryset.count()
     for obj in queryset:
+        # Setting pk to None tells Django to treat this as a new (unsaved) object.
+        # On .save() it will INSERT a new row and auto-generate a fresh UUID.
         obj.pk = None
+
+        # Distinguish the copy from the original in the list view
         obj.name = f"{obj.name} (copy)" if obj.name else "Copy"
+
+        # address is a OneToOneField — two records cannot share the same address row,
+        # so we clear it; the user can assign a new one after duplicating.
         obj.address = None
+
+        # JSONField lists are mutable; slice-copy so the duplicate gets its own
+        # list object instead of a reference to the original's list.
         obj.service_areas = obj.service_areas[:] if obj.service_areas else []
+
+        # Persist the new record to the database
         obj.save()
+
+    # Show a confirmation banner at the top of the change list
     modeladmin.message_user(request, f"{count} first responder(s) duplicated.")
 
 
