@@ -406,9 +406,22 @@ class ServiceZoneCountFilter(admin.SimpleListFilter):
         return queryset
 
 
+@admin.action(description="Duplicate selected first responders")
+def duplicate_first_responders(modeladmin, request, queryset):
+    count = queryset.count()
+    for obj in queryset:
+        obj.pk = None
+        obj.name = f"{obj.name} (copy)" if obj.name else "Copy"
+        obj.address = None
+        obj.service_areas = obj.service_areas[:] if obj.service_areas else []
+        obj.save()
+    modeladmin.message_user(request, f"{count} first responder(s) duplicated.")
+
+
 @admin.register(FirstResponder)
 class FirstResponderAdmin(admin.ModelAdmin):
     form = FirstResponderAdminForm
+    actions = [duplicate_first_responders]
     list_display = (
         "id",
         "name",
