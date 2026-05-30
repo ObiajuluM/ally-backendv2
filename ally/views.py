@@ -207,7 +207,7 @@ def _haversine_km(lat1, lon1, lat2, lon2):
 
 
 def _point_in_polygon(lat, lng, polygon):
-    """Ray-casting algorithm. polygon is a list of [lat, lng] pairs.
+    """Ray-casting algorithm. polygon is a list of [lng, lat] pairs (GeoJSON order).
 
     Imagine standing at a point and shooting a ray in one direction.
     Count how many times that ray crosses the edges of the shape.
@@ -217,11 +217,11 @@ def _point_in_polygon(lat, lng, polygon):
     inside = False
     j = n - 1  # start by comparing the last edge to the first point
     for i in range(n):
-        xi, yi = polygon[i][0], polygon[i][1]  # current polygon vertex
-        xj, yj = polygon[j][0], polygon[j][1]  # previous polygon vertex
+        xi, yi = polygon[i][0], polygon[i][1]  # xi=lng, yi=lat  (GeoJSON [lng, lat])
+        xj, yj = polygon[j][0], polygon[j][1]  # xj=lng, yj=lat
         # Check if the ray from our point crosses this edge.
-        if ((yi > lng) != (yj > lng)) and (
-            lat < (xj - xi) * (lng - yi) / (yj - yi) + xi
+        if ((yi > lat) != (yj > lat)) and (
+            lng < (xj - xi) * (lat - yi) / (yj - yi) + xi
         ):
             # Each crossing flips inside/outside, like toggling a light switch.
             inside = not inside
@@ -332,15 +332,11 @@ def _nearest_zone_distance_km(lat, lng, service_areas):
     # Start with no winner yet — like saying "I haven't found the closest one yet."
     best = None
     for polygon in service_areas:
-        # A shape needs at least 3 corners to be a real shape (like a triangle).
-        # Also skip this shape if the user isn't even standing inside it.
         if len(polygon) < 3 or not _point_in_polygon(lat, lng, polygon):
             continue
-        # Find the middle of this shape by averaging all its corner points.
-        # Think of it like finding the center of a sandbox by averaging where all the walls are.
-        c_lat = sum(p[0] for p in polygon) / len(polygon)
-        c_lng = sum(p[1] for p in polygon) / len(polygon)
-        # Measure how far the user is from the center of this shape.
+        # GeoJSON [lng, lat]: index 0 = lng, index 1 = lat
+        c_lng = sum(p[0] for p in polygon) / len(polygon)
+        c_lat = sum(p[1] for p in polygon) / len(polygon)
         d = _haversine_km(lat, lng, c_lat, c_lng)
         # If this is the first shape we've checked, or it's closer than the previous winner,
         # it becomes the new winner — like keeping track of the shortest straw.
@@ -355,6 +351,9 @@ def _nearest_zone_distance_km(lat, lng, service_areas):
 # --------------------------------------------------------------------------
 
 
+# REMEMBER: service_areas polygons use GeoJSON coordinate order: [lng, lat]: longitude and latitude not the usual (lat, lng) order. This is a common source of confusion, so be careful!
+# Do NOT store or pass [lat, lng] — the point-in-polygon math depends on this order.
+# TODO: add a fix so search goes wider and ignores location: this may require some UI changes
 class FirstResponderListCreateView(ListCreateAPIView):
     # select_related("address") fetches the linked address in the same DB query
     # instead of making a separate query for each responder (much faster).
@@ -416,7 +415,7 @@ class FirstResponderListCreateView(ListCreateAPIView):
                 serializer = self.get_serializer(qs, many=True)
 
             # return Response(serializer.data)
-            # the above return was emptied out to avoid scrapers
+            # REMEMBER: the above return was emptied out to avoid scrapers
             return (
                 Response(serializer.data)
                 if settings.DEBUG

@@ -1,4 +1,6 @@
+import json
 import math
+import os
 import random
 
 from django.core.management.base import BaseCommand
@@ -190,34 +192,22 @@ class Command(BaseCommand):
         )
 
     def make_service_areas(self, base_lat, base_lng):
-        """Generate 1–2 random rectangular service-area polygons near the cluster centre.
+        """Return the Rivers State boundary polygon as the service area.
 
-        Each polygon is a list of [lat, lng] pairs forming a closed rectangle.
-        The size is randomised between 0.3° and 1.2° in each direction so the
-        zones feel varied on the map.
+        Coordinates are loaded directly from Rivers State.json in GeoJSON
+        format ([lng, lat] pairs) and stored as-is — no conversion needed.
         """
+        json_path = os.path.normpath(
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "Rivers State.json"
+            )
+        )
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-        def random_rect(center_lat, center_lng):
-            # Pick a random half-width and half-height in degrees.
-            half_lat = round(random.uniform(0.15, 0.6), 4)
-            half_lng = round(random.uniform(0.15, 0.6), 4)
-            # Four corners of a rectangle (clockwise from top-left).
-            return [
-                [center_lat + half_lat, center_lng - half_lng],  # top-left
-                [center_lat + half_lat, center_lng + half_lng],  # top-right
-                [center_lat - half_lat, center_lng + half_lng],  # bottom-right
-                [center_lat - half_lat, center_lng - half_lng],  # bottom-left
-            ]
-
-        polygons = [random_rect(base_lat, base_lng)]
-
-        # Optionally add a second disconnected zone offset from the first.
-        if random.random() < 0.3:
-            offset_lat = base_lat + random.uniform(-1.5, 1.5)
-            offset_lng = base_lng + random.uniform(-1.5, 1.5)
-            polygons.append(random_rect(offset_lat, offset_lng))
-
-        return polygons
+        # GeoJSON Polygon: coordinates[0] is the outer ring, already [lng, lat].
+        polygon = data["features"][0]["geometry"]["coordinates"][0]
+        return [polygon]
 
     def make_trusted_contact(self, fake):
         return {
