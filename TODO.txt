@@ -1,6 +1,9 @@
 TODO
 https://geojson.io/next/
 https://2kmfromhome.com/10km
+https://nominatim.openstreetmap.org/search?q=Anambra+State&format=geojson&polygon_geojson=1
+https://overpass-turbo.eu/?utm_source=chatgpt.com
+
 USE: PostGIS FOR OPTIMIZATION
         Right now distance calculations happen in Python loops.
         With many responders this becomes slow.

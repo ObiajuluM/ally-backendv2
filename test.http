@@ -1,4 +1,4 @@
-@baseUrl = http://192.168.1.61:8000
+@baseUrl = http://192.168.1.61:8000/api-d/v1
 
 ### Get all first responders within 100 km of a location (grouped by type, sorted closest first)
 GET {{baseUrl}}/first-responders/?lat=30.514462&lng=-60.65113
@@ -17,7 +17,7 @@ GET {{baseUrl}}/first-responders/?search=police
 Accept: application/json
 
 ### Search by keyword + geo (sorted by relevance first, then distance)
-GET {{baseUrl}}/first-responders/?search=hospital&lat=4.8948&lng=6.9719
+GET {{baseUrl}}/first-responders/?search=hospital&lat=4.8956857&lng=6.9751075
 Accept: application/json
 
 ### Search by keyword + geo + type filter
