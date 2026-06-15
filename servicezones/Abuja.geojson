@@ -1,0 +1,436 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-05-29T20:57:19Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/3717259",
+        "ISO3166-2": "NG-FC",
+        "admin_level": "4",
+        "boundary": "administrative",
+        "name": "Federal Capital Territory",
+        "name:ar": "منطقة العاصمة الاتحادية لنيجيريا",
+        "name:azb": "حوزه فدرال مرکزی",
+        "name:be-tarask": "Фэдэральная сталічная тэрыторыя",
+        "name:br": "Tiriad ar Gêr-benn Gevreadel",
+        "name:ca": "Territori de la Capital Federal",
+        "name:ceb": "Federal Capital Territory",
+        "name:da": "Federal Capital Territory",
+        "name:de": "Federal Capital Territory",
+        "name:en": "Federal Capital Territory",
+        "name:es": "Territorio de la Capital Federal",
+        "name:et": "Föderaalne pealinnaala",
+        "name:fa": "حوزه فدرال مرکزی",
+        "name:fr": "Territoire de la capitale fédérale du Nigeria",
+        "name:gl": "Territorio da Capital Federal de Nixeria",
+        "name:ha": "Babban Birnin Tarayya, Najeriya",
+        "name:hi": "संघीय राजधानी क्षेत्र, नाइजीरिया",
+        "name:id": "Wilayah Ibu Kota Federal",
+        "name:it": "Abuja Federal Capital Territory",
+        "name:ja": "連邦首都地区",
+        "name:ka": "დედაქალაქის ფედერალური ტერიტორია",
+        "name:ko": "연방 수도 지구",
+        "name:nl": "Federal Capital Territory",
+        "name:pl": "Federalne Terytorium Stołeczne",
+        "name:pt": "Território da Capital Federal",
+        "name:ro": "Teritoriul Capitalei Federale",
+        "name:ru": "Федеральная столичная территория",
+        "name:sv": "Federal Capital Territory",
+        "name:sw": "Federal Capital Territory, Nigeria",
+        "name:tr": "Federal Başkent Toprakları",
+        "name:uk": "Федеральна столична територія",
+        "name:ur": "وفاقی دارالحکومت علاقہ، نائجیریا",
+        "name:yo": "Agbègbè Olú-ìlú Ìjọba Àpapọ̀ Nàíjíríà",
+        "name:zh": "聯邦首都特區",
+        "source": "ehealthafrica.org",
+        "source:date": "2013",
+        "type": "boundary",
+        "wikidata": "Q509300",
+        "wikipedia": "en:Federal Capital Territory, Nigeria"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              7.5226012,
+              9.3597216
+            ],
+            [
+              7.509101,
+              9.3550313
+            ],
+            [
+              7.4969318,
+              9.3524047
+            ],
+            [
+              7.4737342,
+              9.3503409
+            ],
+            [
+              7.4203553,
+              9.3411465
+            ],
+            [
+              7.3896907,
+              9.335894
+            ],
+            [
+              7.3786463,
+              9.3364174
+            ],
+            [
+              7.2497568,
+              9.1557217
+            ],
+            [
+              7.2339659,
+              9.133502
+            ],
+            [
+              7.219758,
+              9.1135101
+            ],
+            [
+              7.2089167,
+              9.1217524
+            ],
+            [
+              7.208303,
+              9.122219
+            ],
+            [
+              7.2082562,
+              9.1222545
+            ],
+            [
+              7.1706286,
+              9.1508601
+            ],
+            [
+              7.1676583,
+              9.1531181
+            ],
+            [
+              7.0300751,
+              9.2577133
+            ],
+            [
+              7.0152669,
+              9.2689705
+            ],
+            [
+              6.7880545,
+              9.2701664
+            ],
+            [
+              6.7867074,
+              9.1553354
+            ],
+            [
+              6.7847829,
+              8.9912615
+            ],
+            [
+              6.7785225,
+              8.45755
+            ],
+            [
+              6.8278899,
+              8.45755
+            ],
+            [
+              6.8601268,
+              8.4579268
+            ],
+            [
+              6.9841747,
+              8.4593773
+            ],
+            [
+              6.9914408,
+              8.4598236
+            ],
+            [
+              7.0252581,
+              8.461648
+            ],
+            [
+              7.0571218,
+              8.462965
+            ],
+            [
+              7.0842137,
+              8.4636803
+            ],
+            [
+              7.1167412,
+              8.4662218
+            ],
+            [
+              7.162991,
+              8.4733372
+            ],
+            [
+              7.2107654,
+              8.4809608
+            ],
+            [
+              7.271184,
+              8.492466
+            ],
+            [
+              7.3124132,
+              8.500782
+            ],
+            [
+              7.3423996,
+              8.5104389
+            ],
+            [
+              7.3686166,
+              8.529129
+            ],
+            [
+              7.3891573,
+              8.5455074
+            ],
+            [
+              7.4181271,
+              8.5699024
+            ],
+            [
+              7.4430308,
+              8.5932817
+            ],
+            [
+              7.4776235,
+              8.6313334
+            ],
+            [
+              7.4792585,
+              8.6327763
+            ],
+            [
+              7.4932284,
+              8.6507368
+            ],
+            [
+              7.4960008,
+              8.6543016
+            ],
+            [
+              7.5019798,
+              8.6686516
+            ],
+            [
+              7.5414429,
+              8.7404032
+            ],
+            [
+              7.5653014,
+              8.7852793
+            ],
+            [
+              7.5916691,
+              8.8348751
+            ],
+            [
+              7.5946589,
+              8.8564005
+            ],
+            [
+              7.592267,
+              8.9245644
+            ],
+            [
+              7.5886793,
+              9.129056
+            ],
+            [
+              7.6033192,
+              9.1614408
+            ],
+            [
+              7.6676059,
+              9.3036509
+            ],
+            [
+              7.7240805,
+              9.3292549
+            ],
+            [
+              7.7209212,
+              9.3306405
+            ],
+            [
+              7.69297,
+              9.3494028
+            ],
+            [
+              7.6787092,
+              9.3683517
+            ],
+            [
+              7.6707232,
+              9.3839228
+            ],
+            [
+              7.6674908,
+              9.4013691
+            ],
+            [
+              7.6469552,
+              9.408685
+            ],
+            [
+              7.6140604,
+              9.4060588
+            ],
+            [
+              7.5440874,
+              9.3698525
+            ],
+            [
+              7.5226012,
+              9.3597216
+            ]
+          ]
+        ]
+      },
+      "id": "relation/3717259"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/31203257",
+        "@relations": [
+          {
+            "role": "admin_centre",
+            "rel": 3717259,
+            "reltags": {
+              "ISO3166-2": "NG-FC",
+              "admin_level": "4",
+              "boundary": "administrative",
+              "name": "Federal Capital Territory",
+              "name:ar": "منطقة العاصمة الاتحادية لنيجيريا",
+              "name:azb": "حوزه فدرال مرکزی",
+              "name:be-tarask": "Фэдэральная сталічная тэрыторыя",
+              "name:br": "Tiriad ar Gêr-benn Gevreadel",
+              "name:ca": "Territori de la Capital Federal",
+              "name:ceb": "Federal Capital Territory",
+              "name:da": "Federal Capital Territory",
+              "name:de": "Federal Capital Territory",
+              "name:en": "Federal Capital Territory",
+              "name:es": "Territorio de la Capital Federal",
+              "name:et": "Föderaalne pealinnaala",
+              "name:fa": "حوزه فدرال مرکزی",
+              "name:fr": "Territoire de la capitale fédérale du Nigeria",
+              "name:gl": "Territorio da Capital Federal de Nixeria",
+              "name:ha": "Babban Birnin Tarayya, Najeriya",
+              "name:hi": "संघीय राजधानी क्षेत्र, नाइजीरिया",
+              "name:id": "Wilayah Ibu Kota Federal",
+              "name:it": "Abuja Federal Capital Territory",
+              "name:ja": "連邦首都地区",
+              "name:ka": "დედაქალაქის ფედერალური ტერიტორია",
+              "name:ko": "연방 수도 지구",
+              "name:nl": "Federal Capital Territory",
+              "name:pl": "Federalne Terytorium Stołeczne",
+              "name:pt": "Território da Capital Federal",
+              "name:ro": "Teritoriul Capitalei Federale",
+              "name:ru": "Федеральная столичная территория",
+              "name:sv": "Federal Capital Territory",
+              "name:sw": "Federal Capital Territory, Nigeria",
+              "name:tr": "Federal Başkent Toprakları",
+              "name:uk": "Федеральна столична територія",
+              "name:ur": "وفاقی دارالحکومت علاقہ، نائجیریا",
+              "name:yo": "Agbègbè Olú-ìlú Ìjọba Àpapọ̀ Nàíjíríà",
+              "name:zh": "聯邦首都特區",
+              "source": "ehealthafrica.org",
+              "source:date": "2013",
+              "type": "boundary",
+              "wikidata": "Q509300",
+              "wikipedia": "en:Federal Capital Territory, Nigeria"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7.4892974,
+          9.0643305
+        ]
+      },
+      "id": "node/31203257"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/2163706688",
+        "@relations": [
+          {
+            "role": "label",
+            "rel": 3717259,
+            "reltags": {
+              "ISO3166-2": "NG-FC",
+              "admin_level": "4",
+              "boundary": "administrative",
+              "name": "Federal Capital Territory",
+              "name:ar": "منطقة العاصمة الاتحادية لنيجيريا",
+              "name:azb": "حوزه فدرال مرکزی",
+              "name:be-tarask": "Фэдэральная сталічная тэрыторыя",
+              "name:br": "Tiriad ar Gêr-benn Gevreadel",
+              "name:ca": "Territori de la Capital Federal",
+              "name:ceb": "Federal Capital Territory",
+              "name:da": "Federal Capital Territory",
+              "name:de": "Federal Capital Territory",
+              "name:en": "Federal Capital Territory",
+              "name:es": "Territorio de la Capital Federal",
+              "name:et": "Föderaalne pealinnaala",
+              "name:fa": "حوزه فدرال مرکزی",
+              "name:fr": "Territoire de la capitale fédérale du Nigeria",
+              "name:gl": "Territorio da Capital Federal de Nixeria",
+              "name:ha": "Babban Birnin Tarayya, Najeriya",
+              "name:hi": "संघीय राजधानी क्षेत्र, नाइजीरिया",
+              "name:id": "Wilayah Ibu Kota Federal",
+              "name:it": "Abuja Federal Capital Territory",
+              "name:ja": "連邦首都地区",
+              "name:ka": "დედაქალაქის ფედერალური ტერიტორია",
+              "name:ko": "연방 수도 지구",
+              "name:nl": "Federal Capital Territory",
+              "name:pl": "Federalne Terytorium Stołeczne",
+              "name:pt": "Território da Capital Federal",
+              "name:ro": "Teritoriul Capitalei Federale",
+              "name:ru": "Федеральная столичная территория",
+              "name:sv": "Federal Capital Territory",
+              "name:sw": "Federal Capital Territory, Nigeria",
+              "name:tr": "Federal Başkent Toprakları",
+              "name:uk": "Федеральна столична територія",
+              "name:ur": "وفاقی دارالحکومت علاقہ، نائجیریا",
+              "name:yo": "Agbègbè Olú-ìlú Ìjọba Àpapọ̀ Nàíjíríà",
+              "name:zh": "聯邦首都特區",
+              "source": "ehealthafrica.org",
+              "source:date": "2013",
+              "type": "boundary",
+              "wikidata": "Q509300",
+              "wikipedia": "en:Federal Capital Territory, Nigeria"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7.1724673,
+          8.8311228
+        ]
+      },
+      "id": "node/2163706688"
+    }
+  ]
+}
