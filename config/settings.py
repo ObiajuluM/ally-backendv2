@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "jazzmin",  # for admin UI, optional
     "daphne",
     "ally.apps.AllyConfig",
+    "waitlist.apps.WaitlistConfig",
     "rest_framework",
     "rest_framework_simplejwt",
     #
