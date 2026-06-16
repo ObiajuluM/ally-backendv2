@@ -52,9 +52,17 @@ ALLOWED_HOSTS = (
 # In production, this should be set to the actual domains that will be hosting the app.
 CSRF_TRUSTED_ORIGINS = [] if DEBUG else env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+# for cors
+CORS_ALLOWED_ORIGINS = (
+    []  # dev origins
+    if DEBUG
+    else env.list("CORS_ALLOWED_ORIGINS", default=["https://safetyally.app"])
+)
+
 # Application definition
 INSTALLED_APPS = [
     #
+    "corsheaders",  # for cors headers
     "jazzmin",  # for admin UI, optional
     "daphne",
     "ally.apps.AllyConfig",
@@ -75,6 +83,7 @@ MIDDLEWARE = [
     # for whitenoise
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # for cors headers
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
