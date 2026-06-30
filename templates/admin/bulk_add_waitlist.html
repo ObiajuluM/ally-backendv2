@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+
+<h1>Add Waitlist Emails</h1>
+
+<form method="post">
+
+{% csrf_token %}
+
+<textarea 
+name="emails"
+rows="15"
+cols="80"
+placeholder="one@email.com
+two@email.com
+three@email.com">
+</textarea>
+
+<br><br>
+
+<button type="submit" class="button">
+Add Emails
+</button>
+
+</form>
+
+{% endblock %}

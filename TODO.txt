@@ -1,4 +1,7 @@
 Ally: Nigeria's emergency response layer
+languages
+color: Azure
+
 
 add 
 4. HTTPS / Security Headers
