@@ -65,8 +65,11 @@ INSTALLED_APPS = [
     "corsheaders",  # for cors headers
     "jazzmin",  # for admin UI, optional
     "daphne",
+    # all apps
     "ally.apps.AllyConfig",
+    "firstresponder.apps.FirstresponderConfig",
     "waitlist.apps.WaitlistConfig",
+    #
     "rest_framework",
     "rest_framework_simplejwt",
     #
@@ -267,7 +270,8 @@ JAZZMIN_SETTINGS = (
             "auth.Group": "fas fa-layer-group",
             "ally.User": "fas fa-user",
             "ally.MyInformation": "fas fa-id-card",
-            "ally.FirstResponder": "fas fa-ambulance",
+            "firstresponder.FirstResponder": "fas fa-ambulance",
+            "waitlist.WaitlistEntry": "fas fa-hourglass-half",
             "ally.Address": "fas fa-map-marker-alt",
         },
         "default_icon_parents": "fas fa-chevron-circle-right",

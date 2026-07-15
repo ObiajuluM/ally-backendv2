@@ -1,6 +1,5 @@
 from django.urls import path
 from ally.views import (
-    FirstResponderListCreateView,
     GeminidView,
     GoogleAuthView,
     MyInformationRetrieveUpdateDestroyView,
@@ -35,19 +34,6 @@ urlpatterns = [
         UserRetrieveUpdateDestroyView.as_view(),
         name="user-retrieve-update-destroy",
     ),
-    #
-    # first responder endpoints
-    path(
-        "first-responders/",
-        FirstResponderListCreateView.as_view(),
-        name="firstresponder-list-create",
-    ),
-    # path(
-    #     "first-responders/<uuid:pk>/",
-    #     FirstResponderRetrieveUpdateDestroyView.as_view(),
-    #     name="firstresponder-retrieve-update-destroy",
-    # ),
-    #
     # Gemini
     path("geminid/", GeminidView.as_view(), name="geminid"),
 ]
