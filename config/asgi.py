@@ -22,8 +22,8 @@ django_asgi_app = get_asgi_application()
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 from django.conf import settings
-from ally.middleware import JwtAuthMiddlewareStack
-from ally.routing import websocket_urlpatterns
+from livelocation.middleware import JwtAuthMiddlewareStack
+from livelocation.routing import websocket_urlpatterns
 
 # For websockets, we support both session auth and JWT-based auth so the
 # consumer can identify publishers from browser or mobile clients.

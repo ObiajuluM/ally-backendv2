@@ -44,6 +44,7 @@ ALLOWED_HOSTS = (
         "10.216.153.102",
         "localhost",
         "0.0.0.0",
+        "127.0.0.1",
     ]
     if DEBUG
     else env.list("ALLOWED_HOSTS", default=[])
@@ -64,10 +65,11 @@ INSTALLED_APPS = [
     #
     "corsheaders",  # for cors headers
     "jazzmin",  # for admin UI, optional
-    "daphne",
+    "daphne",  # websocket stuff
     # all apps
     "ally.apps.AllyConfig",
     "firstresponder.apps.FirstresponderConfig",
+    "livelocation.apps.LivelocationConfig",
     "waitlist.apps.WaitlistConfig",
     #
     "rest_framework",
@@ -231,7 +233,7 @@ CHANNEL_LAYERS = {
         "CONFIG": {
             "hosts": [
                 (
-                    env("REDIS_HOST", default="127.0.0.1"),
+                    "127.0.0.1" if DEBUG else env("REDIS_HOST", default="127.0.0.1"),
                     env.int("REDIS_PORT", default=6379),
                 )
             ],
@@ -273,6 +275,8 @@ JAZZMIN_SETTINGS = (
             "firstresponder.FirstResponder": "fas fa-ambulance",
             "waitlist.WaitlistEntry": "fas fa-hourglass-half",
             "ally.Address": "fas fa-map-marker-alt",
+            "livelocation.LiveLocationSession": "fas fa-broadcast-tower",
+            "livelocation.SessionParticipant": "fas fa-street-view",
         },
         "default_icon_parents": "fas fa-chevron-circle-right",
         "default_icon_children": "fas fa-circle",

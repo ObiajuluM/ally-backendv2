@@ -3,8 +3,11 @@ languages
 color: Azure
 
 
-add 
-4. HTTPS / Security Headers
+
+
+run docker run --rm -p 6379:6379 redis:7 to test channels
+ws://192.168.1.61:8000/ws/live/{user id}/
+
 
 TODO
 https://geojson.io/next/
@@ -14,7 +17,9 @@ https://overpass-turbo.eu/?utm_source=chatgpt.com
 
 https://acleddata.com/
 
-USE: PostGIS FOR OPTIMIZATION
+
+WITH AI
+1. USE: PostGIS FOR OPTIMIZATION
         Right now distance calculations happen in Python loops.
         With many responders this becomes slow.
         PostGIS would allow:
@@ -23,7 +28,7 @@ USE: PostGIS FOR OPTIMIZATION
         nearest-neighbor queries
         directly in SQL.
         Huge performance boost.
-
+2. TIMEZONE SYNC: make sure a users time zone is respected and included in the db stuff
 
 # Production mode (DEBUG=False uses Postgres)
 # Edit .env: set DEBUG=False + fill in DB_NAME/USER/PASSWORD

@@ -5,6 +5,7 @@ from django.dispatch import receiver
 import uuid
 from geopy.geocoders import Nominatim
 
+
 class Address(models.Model):
     # id = models.UUIDField(
     #     primary_key=True,
@@ -64,7 +65,6 @@ class Address(models.Model):
         return f"{ self.latitude} {self.longitude} {self.full_address}"
 
 
-
 class MyInformation(models.Model):
     id = models.UUIDField(
         primary_key=True,
@@ -109,8 +109,8 @@ class MyInformation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # class Meta:
-    #     ordering = ["-created_at"]
+    class Meta:
+        db_table = "ally_myinformation"
 
     def __str__(self):
         return self.name or "My information"
@@ -159,5 +159,3 @@ def delete_my_information_on_user_delete(sender, instance, **kwargs):
 def delete_address_on_my_information_delete(sender, instance, **kwargs):
     if instance.address_id:
         Address.objects.filter(pk=instance.address_id).delete()
-
-

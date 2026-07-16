@@ -8,7 +8,7 @@ from .models import WaitlistEntry
 
 @admin.register(WaitlistEntry)
 class WaitlistEntryAdmin(admin.ModelAdmin):
-    # list_display = ("email", "created_at")
+    list_display = ("email", "created_at")
     list_display = ("email",)
     search_fields = ("email",)
 
