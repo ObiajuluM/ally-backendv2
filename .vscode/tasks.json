@@ -1,0 +1,48 @@
+{
+    "version": "2.0.0",
+    "_comment1": "==========================================================================",
+    "_comment2": "DJANGO / CELERY / REDIS AUTOMATION STACK",
+    "_comment3": "Press 'Ctrl + Shift + B' to launch all 3 services simultaneously.",
+    "_comment4": "The processes are grouped and will open side-by-side in split screens.",
+    "_comment5": "==========================================================================",
+    // 
+    "tasks": [
+        {
+            "label": "1. Run Redis Docker",
+            "type": "shell",
+            "command": "docker run --rm -p 6379:6379 redis:7",
+            "presentation": {
+                "group": "django-celery-stack"
+            }
+        },
+        {
+            "label": "2. Run Celery Worker",
+            "type": "shell",
+            "command": ".\\venv\\Scripts\\celery -A config worker -l info -P threads",
+            "presentation": {
+                "group": "django-celery-stack"
+            }
+        },
+        {
+            "label": "3. Run Celery Beat",
+            "type": "shell",
+            "command": ".\\venv\\Scripts\\celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler",
+            "presentation": {
+                "group": "django-celery-stack"
+            }
+        },
+        {
+            "label": "Launch Full Dockerized Stack: Docker redis, Celery Worker, Celery Beat",
+            "dependsOrder": "parallel",
+            "dependsOn": [
+                "1. Run Redis Docker",
+                "2. Run Celery Worker",
+                "3. Run Celery Beat"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

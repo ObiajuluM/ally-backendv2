@@ -5,6 +5,7 @@ from __future__ import (
 from typing import TYPE_CHECKING
 from django.utils import timezone
 
+from ally.models import User
 from livelocation.models import (
     LiveLocationSession,
     SessionParticipant,
@@ -202,22 +203,32 @@ class LiveLocationConsumer(WebsocketConsumer):
         user_instance = self.scope["user"]._wrapped
         # 2. Check if the user is logged in
         if user_instance and user_instance.is_authenticated:
-            db_user = user_instance
+            self.db_user = user_instance
         else:
-            db_user = None  # Assigns NULL in the database for anonymous sessions, helps with participant tracking and debugging.
+            self.db_user = None  # Assigns NULL in the database for anonymous sessions, helps with participant tracking and debugging.
 
         # if this is the publisher, we can log that they connected.
         if self.can_publish:
-            self.active_session = LiveLocationSession.objects.create(
-                user=db_user,
-                room_name=self.room_name,
-            )
+            try:
+                self.active_session = LiveLocationSession.objects.create(
+                    user=self.db_user,
+                    room_name=self.room_name,
+                )
+                # then change their is streaming status to true
+                self.db_user.is_streaming = True
+                self.db_user.save(
+                    update_fields=["is_streaming"]
+                )  # Skips Unnecessary Database Triggers and only updates the is_streaming field in the database, improving performance and reducing overhead.
+            except Exception as e:
+                print(
+                    f"Error creating LiveLocationSession: {e}: This is most likely because the session already exists. The publisher should not connect twice."
+                )
         # if this is a viewer, we can log that they connected.
         else:
             try:
                 self.active_participant = SessionParticipant.objects.create(
                     session=LiveLocationSession.objects.get(id=self.active_session.id),
-                    user=db_user,
+                    user=self.db_user,
                     ip=self.get_real_ip(self.scope),
                     metadata=self.serialize_scope(dict(self.scope)),
                 )
@@ -236,6 +247,10 @@ class LiveLocationConsumer(WebsocketConsumer):
                 # TODO: Consider using timezone-aware datetime objects for consistency
                 self.active_session.ended_at = timezone.now()
                 self.active_session.save()
+                self.db_user.is_streaming = False
+                self.db_user.save(
+                    update_fields=["is_streaming"]
+                )  # Skips Unnecessary Database Triggers and only updates the is_streaming field in the database, improving performance and reducing overhead.
             except LiveLocationSession.DoesNotExist:
                 print("Warning: Attempted to end a session that does not exist.")
                 pass  # Handle the case where the session does not exist

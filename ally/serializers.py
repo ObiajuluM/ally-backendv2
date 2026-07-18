@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework_gis.fields import GeometryField
 
 from .models import Address, MyInformation, User
 
@@ -117,6 +118,8 @@ class UserSerializer(serializers.ModelSerializer):
     #     allow_null=True,
     # )
     my_information = MyInformationSerializer(required=False, allow_null=True)
+    # GeoJSON point — accepts/returns {"type": "Point", "coordinates": [lng, lat]}
+    location = GeometryField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -126,5 +129,7 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "username",
             "my_information",
+            "location",
+            "is_streaming",
         ]
         read_only_fields = ["id"]

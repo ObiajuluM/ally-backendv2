@@ -1,5 +1,5 @@
 import uuid
-from django.db import models
+from django.contrib.gis.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from ally.models import Address

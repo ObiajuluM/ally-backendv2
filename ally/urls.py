@@ -1,8 +1,9 @@
-from django.urls import path
+from django.urls import include, path
 from ally.views import (
     GeminidView,
     GoogleAuthView,
     MyInformationRetrieveUpdateDestroyView,
+    UserListCreateView,
     UserRetrieveUpdateDestroyView,
 )
 
@@ -24,11 +25,11 @@ urlpatterns = [
     ),
     #
     # # User endpoints
-    # path(
-    #     "user/",
-    #     UserListCreateView.as_view(),
-    #     name="user-list-create",
-    # ),
+    path(
+        "users/",
+        UserListCreateView.as_view(),
+        name="user-list-create",
+    ),
     path(
         "user/",
         UserRetrieveUpdateDestroyView.as_view(),
@@ -36,4 +37,8 @@ urlpatterns = [
     ),
     # Gemini
     path("geminid/", GeminidView.as_view(), name="geminid"),
+    #
+    path("first-responder/", include("firstresponder.urls")),
+    path("ally-alert/", include("allyalert.urls")),
+    path("live-location/", include("livelocation.urls")),
 ]

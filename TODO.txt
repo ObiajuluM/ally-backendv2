@@ -1,12 +1,22 @@
 Ally: Nigeria's emergency response layer
 languages
-color: Azure
 
-
-
+Do caching and pagination
+App -> backend versioning, so users on older versions will be told to update
 
 run docker run --rm -p 6379:6379 redis:7 to test channels
 ws://192.168.1.61:8000/ws/live/{user id}/
+
+
+run celery windows:
+celery -A config worker -l info -P threads
+
+run celery beats windows
+celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+
+
+#  postgresql://gis_user:gis_pass@localhost:5432/gis_db?sslmode=disable
 
 
 TODO
@@ -16,6 +26,11 @@ https://nominatim.openstreetmap.org/search?q=Anambra+State&format=geojson&polygo
 https://overpass-turbo.eu/?utm_source=chatgpt.com
 
 https://acleddata.com/
+
+
+
+look into SearchVector and SearchRank and SearchQuery, SearchHeadline for the first responders
+
 
 
 WITH AI

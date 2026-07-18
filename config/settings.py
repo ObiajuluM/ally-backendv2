@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 import os
+from celery.schedules import crontab
 
 # import environ
 import environ
@@ -62,6 +63,9 @@ CORS_ALLOWED_ORIGINS = (
 
 # Application definition
 INSTALLED_APPS = [
+    # for celery results backend
+    "django_celery_beat",
+    "django_celery_results",
     #
     "corsheaders",  # for cors headers
     "jazzmin",  # for admin UI, optional
@@ -71,10 +75,14 @@ INSTALLED_APPS = [
     "firstresponder.apps.FirstresponderConfig",
     "livelocation.apps.LivelocationConfig",
     "waitlist.apps.WaitlistConfig",
+    "allyalert.apps.AllyalertConfig",
     #
     "rest_framework",
+    "rest_framework_gis",
     "rest_framework_simplejwt",
-    #
+    # for GIS
+    "django.contrib.gis",
+    # default django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -123,18 +131,29 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = (
+    # {
+    #     # for testing
+    #     "default": {
+    #         "ENGINE": "django.db.backends.sqlite3",
+    #         "NAME": BASE_DIR / "db.sqlite3",
+    #     }
+    # }
     {
-        # for testing
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "ENGINE": "django.contrib.gis.db.backends.postgis",  # GeoDjango backend
+            "NAME": "gis_db",
+            "USER": "gis_user",
+            "PASSWORD": "gis_pass",
+            "HOST": "127.0.0.1",  # Connect via your local host
+            "PORT": "5432",
         }
     }
     if DEBUG
     else {
         # for production
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            # "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
             "NAME": env("DB_NAME"),
             "USER": env("DB_USER"),
             "PASSWORD": env("DB_PASSWORD"),
@@ -197,6 +216,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # Allows you to use the standard DRF UI Log In button
+        "rest_framework.authentication.SessionAuthentication",
     ),
     # ... other DRF settings
 }
@@ -209,9 +230,11 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = "ally.User"
 
+
+# Google OAuth2 settings
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 
-# gemini api key for flutter
+#
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
 # gemini model to use, e.g. "gemini-2.5-flash-lite"
@@ -240,6 +263,57 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+
+# MARK: Celery configuration
+# TODO: region -- -- endregion
+# --- Celery Configuration ---
+CELERY_BROKER_URL = f"redis://{"127.0.0.1" if DEBUG else env("REDIS_HOST", default="127.0.0.1")}:{env.int('REDIS_PORT', default=6379)}/1"
+
+# Database result backend configuration (requires django-celery-results)
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = (
+    True  # Highly recommended: logs task arguments and execution graphs
+)
+
+# Security & Serialization
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+
+# Reliability
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TIMEZONE = TIME_ZONE  # Synchronizes Celery with your Django project timezone
+
+
+# CELERY BEAT  — periodic task schedule
+CELERY_BEAT_SCHEDULE = {
+    # Check for expired alerts every 5 minutes.
+    # Keeps the public list view from showing stale alerts.
+    "expire-stale-alerts": {
+        "task": "allyalert.tasks.expire_stale_alerts",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Close orphaned live-location sessions once a day at 12:30 AM.
+    "cleanup-orphaned-live-sessions": {
+        "task": "livelocation.tasks.cleanup_orphaned_live_sessions",
+        "schedule": crontab(hour=0, minute=30),
+    },
+    # syste level shit
+    # Delete celery task result rows older than 30 days, once a day at 3 AM.
+    # Prevents the TaskResult table from growing unboundedly.
+    "cleanup-celery-results": {
+        "task": "config.tasks.cleanup_celery_results",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
+
+# Force Celery to always use the database scheduler by default
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+# Unchecked records sit in your database forever, degrading query speeds.
+# This sets task historical data to auto-expire after 7 days.
+# CELERY_RESULT_EXPIRES = 60 * 60 * 24 * 7
 
 # Stop words
 STOP_WORDS = set(env.list("STOP_WORDS", default=[]))
@@ -295,3 +369,14 @@ JAZZMIN_UI_TWEAKS = (
         "sidebar": "sidebar-dark-primary",
     }
 )
+
+#  FOR POST GIS, GDAL --  if running on windowss
+if os.name == "nt":
+    # Point Django directly to the main GDAL DLL file
+    GDAL_LIBRARY_PATH = r"C:\Program Files\GDAL\gdal.dll"
+
+    # Point Django directly to the GEOS C-API DLL file
+    GEOS_LIBRARY_PATH = r"C:\Program Files\GDAL\geos_c.dll"
+
+    # Optional: Set the PROJ data directory if you hit coordinate transformation errors later
+    os.environ["PROJ_LIB"] = r"C:\Program Files\GDAL\projlib"

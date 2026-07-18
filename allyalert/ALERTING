@@ -1,0 +1,40 @@
+Updated todo list
+
+Here's the intended flow:
+
+**1. Alert is created**
+A user POSTs a new AllyAlert with a `target_location` and `radius_km`.
+
+**2. Delivery job runs**
+A background task (Celery, Django signals, or a management command) queries for all users whose current location falls within `radius_km` of `target_location`:
+```python
+from django.contrib.gis.measure import D
+from django.contrib.gis.geos import Point
+
+nearby_users = User.objects.filter(
+    location__dwithin=(alert.target_location, D(km=alert.radius_km))
+)
+```
+
+**3. `AlertDelivery` rows are created**
+One row per eligible user. The `UniqueConstraint` on `(alert, user)` means re-running the job is safe — duplicate inserts are simply ignored via `get_or_create` or `ignore_conflicts=True`:
+```python
+AlertDelivery.objects.bulk_create(
+    [AlertDelivery(alert=alert, user=user) for user in nearby_users],
+    ignore_conflicts=True,
+)
+```
+
+**4. Push notification / WebSocket is sent**
+After the delivery row is written, a push notification or WebSocket message is dispatched to the user's device.
+
+**5. User opens the alert → `viewed_at` is stamped**
+When the client calls `PATCH /v1/alerts/<id>/mark-viewed/`, the view sets `viewed_at = now()` on their `AlertDelivery` row.
+
+---
+
+**What you still need to build:**
+- A task/signal that triggers step 2 when an alert is saved
+- User location storage (either on the `User` model or a separate table)
+- The `mark-viewed` endpoint
+- The push notification integration

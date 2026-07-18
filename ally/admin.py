@@ -2,6 +2,10 @@ import json
 
 from django import forms
 from django.contrib import admin
+from django.contrib.gis.geos import Point
+
+from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.urls import reverse
 from django.utils.html import format_html
@@ -9,89 +13,6 @@ from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 from .models import Address, MyInformation, User
-
-_KV_JS = """
-<script>
-(function () {
-  if (window._kvAddRow) return;
-  window._kvAddRow = function (containerId, fieldName) {
-    var c = document.getElementById(containerId);
-    var d = document.createElement('div');
-    d.className = 'kv-row';
-    d.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center';
-    d.innerHTML =
-      '<input type="text" name="' + fieldName + '_key[]" placeholder="key"'
-      + ' style="width:40%;padding:4px 6px">'
-      + '<span style="padding:0 4px">:</span>'
-      + '<input type="text" name="' + fieldName + '_val[]" placeholder="value"'
-      + ' style="flex:1;padding:4px 6px">'
-      + '<button type="button" onclick="this.parentElement.remove()"'
-      + ' style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;line-height:1">&#8722;</button>';
-    c.insertBefore(d, c.lastElementChild);
-  };
-}());
-</script>
-"""
-
-
-class KeyValueWidget(forms.Widget):
-    def _row(self, name, key="", val=""):
-        return (
-            '<div class="kv-row" style="display:flex;gap:8px;margin-bottom:6px;align-items:center">'
-            '<input type="text" name="{name}_key[]" value="{key}" placeholder="key"'
-            ' style="width:40%;padding:4px 6px">'
-            '<span style="padding:0 4px">:</span>'
-            '<input type="text" name="{name}_val[]" value="{val}" placeholder="value"'
-            ' style="flex:1;padding:4px 6px">'
-            '<button type="button" onclick="this.parentElement.remove()"'
-            ' style="color:#ba2121;cursor:pointer;border:none;background:none;font-size:18px;line-height:1">&#8722;</button>'
-            "</div>"
-        ).format(name=name, key=escape(str(key)), val=escape(str(val)))
-
-    def render(self, name, value, attrs=None, renderer=None):
-        if isinstance(value, str):
-            try:
-                value = json.loads(value) if value else {}
-            except (json.JSONDecodeError, TypeError):
-                value = {}
-        if not isinstance(value, dict):
-            value = {}
-
-        cid = "kv_" + name.replace("-", "_").replace(".", "_")
-        rows = "".join(self._row(name, k, v) for k, v in value.items()) or self._row(
-            name
-        )
-        add_btn = (
-            "<button type=\"button\" onclick=\"_kvAddRow('{cid}', '{name}')\""
-            ' style="margin-top:4px;cursor:pointer;padding:2px 10px">&#43; Add</button>'
-        ).format(cid=cid, name=name)
-
-        return mark_safe(f'<div id="{cid}">{rows}{add_btn}</div>{_KV_JS}')
-
-    def value_from_datadict(self, data, files, name):
-        keys = data.getlist(f"{name}_key[]")
-        vals = data.getlist(f"{name}_val[]")
-        return {k.strip(): v.strip() for k, v in zip(keys, vals) if k.strip()}
-
-
-class KeyValueField(forms.Field):
-    widget = KeyValueWidget
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("required", False)
-        super().__init__(*args, **kwargs)
-
-    def clean(self, value):
-        return value if isinstance(value, dict) else {}
-
-    def prepare_value(self, value):
-        if isinstance(value, str):
-            try:
-                return json.loads(value) if value else {}
-            except (json.JSONDecodeError, TypeError):
-                return {}
-        return value if isinstance(value, dict) else {}
-
 
 admin.site.site_header = "Ally Admin"
 admin.site.site_title = "Ally Admin"
@@ -205,20 +126,113 @@ class MyInformationAdmin(admin.ModelAdmin):
         return len(obj.trusted_contacts or [])
 
 
+class UserAdminForm(forms.ModelForm):
+    # This field handles the special read-only text and link formatting - fixes the requesting password on model save bs
+    password = ReadOnlyPasswordHashField(
+        label=_("Password"),
+        help_text=_(
+            "Raw passwords are not stored, so there is no way to see "
+            "the user's password."
+        ),
+    )
+    latitude = forms.FloatField(
+        required=False,
+        label="Latitude",
+        help_text="The user's last seen latitude - Example: 6.5244",
+    )
+
+    longitude = forms.FloatField(
+        required=False,
+        label="Longitude",
+        help_text="The user's last seen longitude - Example: 3.3792",
+    )
+
+    class Meta:
+        model = User
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Fallback handling to pull help text if the password field is blank/unset - fixes the requesting password on model save bs
+        password = self.fields.get("password")
+        if password and self.instance.pk:
+            # Reuses standard Django text formatting for active vs unset passwords
+            password.help_text = password.help_text
+
+        if self.instance and self.instance.location:
+            self.fields["latitude"].initial = self.instance.location.y
+            self.fields["longitude"].initial = self.instance.location.x
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        lat = cleaned_data.get("latitude")
+        lon = cleaned_data.get("longitude")
+
+        if lat is not None and not -90 <= lat <= 90:
+            self.add_error(
+                "latitude",
+                "Latitude must be between -90 and 90.",
+            )
+
+        if lon is not None and not -180 <= lon <= 180:
+            self.add_error(
+                "longitude",
+                "Longitude must be between -180 and 180.",
+            )
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+
+        latitude = self.cleaned_data.get("latitude")
+        longitude = self.cleaned_data.get("longitude")
+
+        if latitude is not None and longitude is not None:
+            user.location = Point(
+                longitude,
+                latitude,
+                # srid=4326,
+            )
+
+        elif latitude is None and longitude is None:
+            user.location = None
+
+        if commit:
+            user.save()
+
+        return user
+
+
+# ============================================================
+# User Admin
+# ============================================================
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+
     model = User
+    form = UserAdminForm
+
     list_display = (
         "email",
         "username",
         "phone",
+        "latitude_display",
+        "longitude_display",
+        "map_link",
         "my_information_link",
         "is_staff",
         "is_active",
         "date_joined",
         "updated_at",
     )
-    list_filter = ("is_staff", "is_superuser", "is_active")
+
+    list_filter = ("is_staff", "is_superuser", "is_active", "is_streaming")
+
     search_fields = (
         "email",
         "username",
@@ -227,12 +241,31 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "my_information__name",
     )
+
     ordering = ("email",)
+
     list_select_related = ("my_information",)
+
     autocomplete_fields = ("my_information",)
-    readonly_fields = ("id", "date_joined", "last_login", "updated_at")
+
+    readonly_fields = (
+        "id",
+        "date_joined",
+        "last_login",
+        "updated_at",
+        "google_map",
+    )
+
     fieldsets = (
-        (None, {"fields": ("email", "password")}),
+        (
+            None,
+            {
+                "fields": (
+                    "email",
+                    "password",
+                )
+            },
+        ),
         (
             "Profile",
             {
@@ -243,6 +276,17 @@ class UserAdmin(BaseUserAdmin):
                     "last_name",
                     "phone",
                     "my_information",
+                ),
+            },
+        ),
+        (
+            "Location",
+            {
+                "fields": (
+                    "is_streaming",
+                    "latitude",
+                    "longitude",
+                    "google_map",
                 ),
             },
         ),
@@ -261,10 +305,15 @@ class UserAdmin(BaseUserAdmin):
         (
             "Important Dates",
             {
-                "fields": ("last_login", "date_joined", "updated_at"),
+                "fields": (
+                    "last_login",
+                    "date_joined",
+                    "updated_at",
+                ),
             },
         ),
     )
+
     add_fieldsets = (
         (
             None,
@@ -282,14 +331,79 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
     list_per_page = 25
+
     empty_value_display = "-"
+
+    # ========================================================
+    # Location Display Helpers
+    # ========================================================
+
+    @admin.display(description="Latitude")
+    def latitude_display(self, obj):
+
+        if obj.location:
+            return round(obj.location.y, 6)
+
+        return "-"
+
+    @admin.display(description="Longitude")
+    def longitude_display(self, obj):
+
+        if obj.location:
+            return round(obj.location.x, 6)
+
+        return "-"
+
+    @admin.display(description="Google Maps")
+    def google_map(self, obj):
+
+        if not obj.location:
+            return "-"
+
+        lat = obj.location.y
+        lon = obj.location.x
+
+        url = f"https://www.google.com/maps?q={lat},{lon}"
+
+        return format_html(
+            '<a href="{}" target="_blank">' "Open Location" "</a>",
+            url,
+        )
+
+    @admin.display(description="Map")
+    def map_link(self, obj):
+
+        if not obj.location:
+            return "-"
+
+        lat = obj.location.y
+        lon = obj.location.x
+
+        return format_html(
+            '<a href="https://www.google.com/maps?q={},{}" target="_blank">'
+            "View"
+            "</a>",
+            lat,
+            lon,
+        )
 
     @admin.display(description="My Information")
     def my_information_link(self, obj):
+
         if not obj.my_information_id:
             return "-"
 
-        url = reverse("admin:ally_myinformation_change", args=[obj.my_information_id])
+        url = reverse(
+            "admin:ally_myinformation_change",
+            args=[obj.my_information_id],
+        )
+
         label = obj.my_information.name or str(obj.my_information_id)
-        return format_html('<a href="{}">{}</a>', url, label)
+
+        return format_html(
+            '<a href="{}">{}</a>',
+            url,
+            label,
+        )

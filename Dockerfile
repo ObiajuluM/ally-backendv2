@@ -1,95 +1,69 @@
-# # ---------------------------------------------------------------------------
-# # Dockerfile
-# # Think of this file as a recipe card.
-# # It tells Docker step-by-step how to build a box (called an "image") that
-# # contains everything our app needs to run — Python, libraries, our code.
-# # ---------------------------------------------------------------------------
-
-# # Start from an official Python 3.12 image.
-# # "slim" means it's a stripped-down version — smaller download, less bloat.
-# # Think of it as a clean, empty kitchen with only Python already installed.
-# FROM python:3.12-slim
-
-# # Don't write .pyc bytecode files to disk — keeps the container tidy.
-# ENV PYTHONDONTWRITEBYTECODE=1
-# # Print Python output immediately instead of buffering it.
-# # This means logs show up in real time instead of being delayed.
-# ENV PYTHONUNBUFFERED=1
-
-# # Set the working directory inside the container.
-# # Every command from here on runs as if we cd'd into /app.
-# WORKDIR /app
-
-# # Install system-level tools that Python packages need to compile.
-# #   gcc     — a C compiler (some Python packages compile C code under the hood)
-# #   libpq-dev — the PostgreSQL client library (needed by psycopg2 to talk to Postgres)
-# # We clean up the apt cache after so the image stays lean.
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     gcc \
-#     libpq-dev \
-#     && rm -rf /var/lib/apt/lists/*
-
-# # Copy ONLY requirements.txt first, then install.
-# # Docker caches each step — if requirements.txt hasn't changed, this layer
-# # is reused on the next build, making rebuilds much faster.
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Now copy the rest of our project code into /app.
-# COPY . .
-
-# # Make sure the static file folders exist.
-# # Django's collectstatic will fail if the source folder is missing.
-# RUN mkdir -p static staticfiles
-
-# # Copy the startup script into the container and make it executable.
-# # chmod +x = "give this file permission to run as a program".
-# COPY entrypoint.sh /entrypoint.sh
-# RUN chmod +x /entrypoint.sh
-
-# # Tell Docker our app listens on port 8000.
-# # This doesn't open the port — it's just documentation.
-# # The actual port mapping happens in docker-compose.yml.
-# EXPOSE 8000
-
-# # When the container starts, run the entrypoint script.
-# ENTRYPOINT ["/entrypoint.sh"]
-
-
-
-#######################################################################
-
-# Split the Docker build into two stages: "builder" for compiling dependencies, and "runtime" for the final image that runs our app. To keep the final image small, we only copy the compiled libraries from the builder stage, not the build tools.
-
-# ── Stage 1: build ──────────────────────────────────────────────────────────
+# ============================================================================
+# Stage 1 - Builder
+# ============================================================================
 FROM python:3.12-slim AS builder
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
+# Install only packages needed to build Python wheels
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev \
+    build-essential \
+    gcc \
+    libpq-dev \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# ── Stage 2: runtime ─────────────────────────────────────────────────────────
+COPY requirements.txt .
+
+RUN python -m pip install --upgrade pip
+
+RUN pip install --prefix=/install -r requirements.txt
+
+
+# ============================================================================
+# Stage 2 - Runtime
+# ============================================================================
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONFAULTHANDLER=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Only the runtime lib, not the dev headers
+# Install only runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    gdal-bin \
+    libgdal32 \
+    libgeos-c1v5 \
+    libproj25 \
+    binutils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Copy installed Python packages
 COPY --from=builder /install /usr/local
+
+# Copy project
 COPY . .
-RUN mkdir -p static staticfiles
+
+# Create directories used by Django
+RUN mkdir -p \
+    static \
+    staticfiles \
+    media
+
+# Entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
+
 ENTRYPOINT ["/entrypoint.sh"]

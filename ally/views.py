@@ -1,4 +1,3 @@
-
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -105,6 +104,8 @@ class GoogleAuthView(APIView):
             )
         except Exception as e:
             print(e)
+            # import traceback
+            # traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -175,6 +176,7 @@ class UserRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     def get_object(self):
         # Always return the currently logged-in user's account.
         # No UUID in the URL is needed.
+        # return self.queryset.get(pk="4dcfff31-16a6-4485-95c8-ed6ab6c53981")
         return self.request.user
 
 
