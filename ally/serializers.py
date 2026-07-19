@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_gis.fields import GeometryField
+from django.contrib.gis.geos import Point
 
 from .models import Address, MyInformation, User
 
@@ -18,10 +19,71 @@ def address_has_content(address_data):
 
 
 class AddressSerializer(serializers.ModelSerializer):
+    # Explicit fields that accept input data and render output data
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
+
     class Meta:
         model = Address
-        fields = ["latitude", "longitude", "full_address"]
-        # read_only_fields = ["id"]
+        fields = ["longitude", "latitude", "as_string"]
+        # as_string is handled automatically by your model's save() geocoder
+        read_only_fields = ["as_string"]
+
+    def to_representation(self, instance):
+        """Controls what data is sent OUT to the API client."""
+        representation = super().to_representation(instance)
+        representation["latitude"] = instance.latitude
+        representation["longitude"] = instance.longitude
+        return representation
+
+    def validate(self, attrs):
+        """Validates coordinates and packages them into a Point object."""
+        lat = attrs.pop("latitude", None)
+        lon = attrs.pop("longitude", None)
+
+        # Ensure both coordinates are present if one is provided
+        if (lat is not None and lon is None) or (lon is not None and lat is None):
+            raise serializers.ValidationError(
+                "Both latitude and longitude must be provided together."
+            )
+
+        # Package coordinates into GeoDjango Point (X/Longitude first, Y/Latitude second)
+        if lat is not None and lon is not None:
+            attrs["location"] = Point(lon, lat)
+        else:
+            attrs["location"] = None
+
+        return attrs
+
+
+# class AddressSerializer(serializers.ModelSerializer):
+#     # Read-only fields for API outputs
+#     longitude = serializers.ReadOnlyField()
+#     latitude = serializers.ReadOnlyField()
+
+#     class Meta:
+#         model = Address
+#         fields = ["longitude", "latitude", "as_string"]
+# read_only_fields = ["id"]
+
+
+# FOR Address Serilaizer
+# from rest_framework import serializers
+
+# class LocationSerializer(serializers.ModelSerializer):
+#     latitude = serializers.ReadOnlyField(source='point.y')
+#     longitude = serializers.ReadOnlyField(source='point.x')
+
+#     class Meta:
+#         model = Location
+#         fields = ['id', 'name', 'latitude', 'longitude']
+
+
+# class AddressSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Address
+#         fields = ["latitude", "longitude", "full_address"]
+#         # read_only_fields = ["id"]
 
 
 class MyInformationSerializer(serializers.ModelSerializer):

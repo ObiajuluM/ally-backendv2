@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "livelocation.apps.LivelocationConfig",
     "waitlist.apps.WaitlistConfig",
     "allyalert.apps.AllyalertConfig",
+    "chat.apps.ChatConfig",
     #
     "rest_framework",
     "rest_framework_gis",

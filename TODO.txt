@@ -4,9 +4,13 @@ languages
 Do caching and pagination
 App -> backend versioning, so users on older versions will be told to update
 
+
+
+
+ctrl - shift - b
+
 run docker run --rm -p 6379:6379 redis:7 to test channels
 ws://192.168.1.61:8000/ws/live/{user id}/
-
 
 run celery windows:
 celery -A config worker -l info -P threads

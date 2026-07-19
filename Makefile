@@ -10,7 +10,8 @@ seed:
 	python manage.py seed
 
 migrate:
-	python manage.py makemigrations
+# 	python manage.py makemigrations
+	python manage.py makemigrations ally allyalert chat firstresponder livelocation waitlist
 	python manage.py migrate
 
 

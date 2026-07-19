@@ -19,21 +19,82 @@ admin.site.site_title = "Ally Admin"
 admin.site.index_title = "Operations Dashboard"
 
 
+class AddressAdminForm(forms.ModelForm):
+    # Create two explicit form fields for inputs
+    longitude = forms.FloatField(required=False, label="Longitude")
+    latitude = forms.FloatField(required=False, label="Latitude")
+
+    class Meta:
+        model = Address
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-populate the form inputs if an instance exists with a location
+        if self.instance and self.instance.location:
+            self.initial["longitude"] = self.instance.location.x
+            self.initial["latitude"] = self.instance.location.y
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        lon = self.cleaned_data.get("longitude")
+        lat = self.cleaned_data.get("latitude")
+
+        # Convert the individual inputs back into a GeoDjango Point object
+        if lon is not None and lat is not None:
+            instance.location = Point(lon, lat)
+        else:
+            instance.location = None
+
+        if commit:
+            instance.save()
+        return instance
+
+
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
+    form = AddressAdminForm  # Hook up the custom form
+
     list_display = (
         "id",
-        "full_address",
-        "latitude",
-        "longitude",
+        "as_string",
+        "longitude",  # Pulls from model property for list view
+        "latitude",  # Pulls from model property for list view
         "created_at",
         "updated_at",
     )
-    search_fields = ("id", "full_address")
+
+    # Define fields layout to show them in the edit panel
+    fields = (
+        "as_string",
+        "longitude",
+        "latitude",
+        "created_at",
+        "updated_at",
+    )
+
+    search_fields = ("id", "as_string")
     ordering = ("-created_at",)
     readonly_fields = ("created_at", "updated_at")
     list_per_page = 25
     empty_value_display = "-"
+
+
+# @admin.register(Address)
+# class AddressAdmin(admin.ModelAdmin):
+#     list_display = (
+#         "id",
+#         "as_string",
+#         "longitude",
+#         "latitude",
+#         "created_at",
+#         "updated_at",
+#     )
+#     search_fields = ("id", "as_string")
+#     ordering = ("-created_at",)
+#     readonly_fields = ("created_at", "updated_at")
+#     list_per_page = 25
+#     empty_value_display = "-"
 
 
 @admin.register(MyInformation)
@@ -58,7 +119,7 @@ class MyInformationAdmin(admin.ModelAdmin):
         "user__email",
         "user__username",
         "user__phone",
-        "address__full_address",
+        "address__as_string",
     )
     list_select_related = ("address", "user")
     autocomplete_fields = ("address",)
@@ -117,8 +178,7 @@ class MyInformationAdmin(admin.ModelAdmin):
         if not obj.address:
             return "-"
         return (
-            obj.address.full_address
-            or f"{obj.address.latitude}, {obj.address.longitude}"
+            obj.address.as_string or f"{obj.address.longitude}, {obj.address.latitude}"
         )
 
     @admin.display(description="Trusted Contacts")

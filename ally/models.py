@@ -7,52 +7,55 @@ from geopy.geocoders import Nominatim
 
 
 class Address(models.Model):
-    # id = models.UUIDField(
-    #     primary_key=True,
-    #     default=uuid.uuid4,
-    #     editable=False,
-    # )
 
-    latitude = models.DecimalField(
-        blank=True,
-        null=True,
-        help_text="Latitude of location",
-        max_digits=11,
-        decimal_places=7,
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
     )
-    longitude = models.DecimalField(
-        blank=True,
+
+    location = models.PointField(
+        geography=True,
+        spatial_index=True,
         null=True,
-        help_text="Longitude of location",
-        max_digits=11,
-        decimal_places=7,
+        blank=True,
     )
-    full_address = models.CharField(
+    as_string = models.CharField(
         max_length=255,
         blank=True,
         null=True,
         help_text="Full address (e.g., Lagos, Nigeria)",
     )
 
-    def __address_from_latlong(self):
+    @property
+    def longitude(self):
+        # Fixed: Changed self.point to self.location
+        return self.location.x if self.location else None
+
+    @property
+    def latitude(self):
+        # Fixed: Changed self.point to self.location
+        return self.location.y if self.location else None
+
+    def __address_from_longlat(self):
         print("Running reverse geocoding for address...")
+
         # Initialize Nominatim API
         geolocator = Nominatim(user_agent="ally")
+
+        # Check if coordinates exist using your properties
         if self.latitude is not None and self.longitude is not None:
             try:
-                location = geolocator.reverse(
-                    (self.latitude, self.longitude),
-                )
-                if location and location.address:
-                    self.full_address = location.address
+                # Fixed: Use your model's properties (self.latitude, self.longitude)
+                addr = geolocator.reverse((self.latitude, self.longitude))
+                if addr and addr.address:
+                    self.as_string = addr.address
             except Exception as e:
-                # Log the error or handle it as needed
                 print(f"Error during reverse geocoding: {e}")
-        pass
 
     def save(self, *args, **kwargs):
         # Run the reverse-geocode helper every time this record is saved.
-        self.__address_from_latlong()
+        self.__address_from_longlat()
         super().save(*args, **kwargs)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -62,7 +65,7 @@ class Address(models.Model):
     #     ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{ self.latitude} {self.longitude} {self.full_address}"
+        return f"{self.longitude} - {self.latitude}, {self.as_string}"
 
 
 class MyInformation(models.Model):

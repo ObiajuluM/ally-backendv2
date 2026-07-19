@@ -337,7 +337,7 @@ class FirstResponderAdmin(admin.ModelAdmin):
         "updated_at",
     )
     list_filter = ("firstresponder_type", "organization_type", ServiceZoneCountFilter)
-    search_fields = ("id", "name", "description", "address__full_address")
+    search_fields = ("id", "name", "description", "address__as_string")
     list_select_related = ("address",)
     autocomplete_fields = ("address",)
     readonly_fields = (
@@ -393,8 +393,7 @@ class FirstResponderAdmin(admin.ModelAdmin):
         if not obj.address:
             return "-"
         return (
-            obj.address.full_address
-            or f"{obj.address.latitude}, {obj.address.longitude}"
+            obj.address.as_string or f"{obj.address.latitude}, {obj.address.longitude}"
         )
 
     @admin.display(description="Tags")

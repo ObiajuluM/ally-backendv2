@@ -25,11 +25,11 @@ urlpatterns = [
     ),
     #
     # # User endpoints
-    path(
-        "users/",
-        UserListCreateView.as_view(),
-        name="user-list-create",
-    ),
+    # path(
+    #     "users/",
+    #     UserListCreateView.as_view(),
+    #     name="user-list-create",
+    # ),
     path(
         "user/",
         UserRetrieveUpdateDestroyView.as_view(),
@@ -41,4 +41,5 @@ urlpatterns = [
     path("first-responder/", include("firstresponder.urls")),
     path("ally-alert/", include("allyalert.urls")),
     path("live-location/", include("livelocation.urls")),
+    path("chat/", include("chat.urls")),
 ]

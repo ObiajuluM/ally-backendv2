@@ -1,6 +1,9 @@
 from django.urls import path
 
-from firstresponder.views import FirstResponderListCreateView
+from firstresponder.views import (
+    FirstResponderListCreateView,
+    FirstResponderRetrieveUpdateDestroyView,
+)
 
 urlpatterns = [
     path(
@@ -8,11 +11,9 @@ urlpatterns = [
         FirstResponderListCreateView.as_view(),
         name="firstresponder-list-create",
     ),
-    #
-    # path(
-    #     "first-responders/<uuid:pk>/",
-    #     FirstResponderRetrieveUpdateDestroyView.as_view(),
-    #     name="firstresponder-retrieve-update-destroy",
-    # ),
-    #
+    path(
+        "<uuid:pk>/",
+        FirstResponderRetrieveUpdateDestroyView.as_view(),
+        name="firstresponder-retrieve-update-destroy",
+    ),
 ]
