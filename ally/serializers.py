@@ -67,7 +67,7 @@ class AddressSerializer(serializers.ModelSerializer):
 # read_only_fields = ["id"]
 
 
-# FOR Address Serilaizer
+# FOR Address Serializer
 # from rest_framework import serializers
 
 # class LocationSerializer(serializers.ModelSerializer):

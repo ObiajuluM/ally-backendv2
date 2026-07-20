@@ -4,6 +4,27 @@ from ally.models import Address
 from ally.serializers import AddressSerializer, address_has_content
 from firstresponder.models import FirstResponder, FirstResponderTag
 
+from .models import ServiceArea
+
+
+class ServiceAreaSerializer(serializers.ModelSerializer):
+    polygon = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ServiceArea
+        fields = [
+            "id",
+            "name",
+            "polygon",
+        ]
+
+    def get_polygon(self, obj):
+        if not obj.polygon:
+            return None
+
+        # Remove duplicate closing coordinate
+        return [[lon, lat] for lon, lat in obj.polygon.coords[0][:-1]]
+
 
 class FirstResponderSerializer(serializers.ModelSerializer):
     address = AddressSerializer(required=False, allow_null=True)
@@ -19,16 +40,10 @@ class FirstResponderSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     metadata = serializers.DictField(required=False, allow_null=True)
-    # List of polygons; each polygon is a list of [lat, lng] two-element lists.
-    service_areas = serializers.ListField(
-        child=serializers.ListField(
-            child=serializers.ListField(
-                child=serializers.FloatField(), min_length=2, max_length=2
-            ),
-            min_length=3,
-        ),
-        required=False,
-        allow_null=True,
+
+    service_areas = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceArea.objects.all(),
+        many=True,
     )
 
     class Meta:

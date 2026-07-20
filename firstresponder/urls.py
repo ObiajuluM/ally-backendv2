@@ -1,19 +1,19 @@
 from django.urls import path
 
 from firstresponder.views import (
-    FirstResponderListCreateView,
+    FirstResponderListView,
     FirstResponderRetrieveUpdateDestroyView,
 )
 
 urlpatterns = [
     path(
         "",
-        FirstResponderListCreateView.as_view(),
-        name="firstresponder-list-create",
+        FirstResponderListView.as_view(),
+        name="firstresponder-list-no-create",
     ),
-    path(
-        "<uuid:pk>/",
-        FirstResponderRetrieveUpdateDestroyView.as_view(),
-        name="firstresponder-retrieve-update-destroy",
-    ),
+    # path(
+    #     "<uuid:pk>/",
+    #     FirstResponderRetrieveUpdateDestroyView.as_view(),
+    #     name="firstresponder-retrieve-update-destroy",
+    # ),
 ]

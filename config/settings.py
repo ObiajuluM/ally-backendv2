@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "waitlist.apps.WaitlistConfig",
     "allyalert.apps.AllyalertConfig",
     "chat.apps.ChatConfig",
+    # "areaadvisor.apps.AreaadvisorConfig",
     #
     "rest_framework",
     "rest_framework_gis",
@@ -232,14 +233,18 @@ SIMPLE_JWT = {
 AUTH_USER_MODEL = "ally.User"
 
 
+# MARK: OAUTH Configuration
 # Google OAuth2 settings
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 
-#
+# MARK: Gemini Configuration
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
-
-# gemini model to use, e.g. "gemini-2.5-flash-lite"
-GEMINI_MODEL = env("GEMINI_MODEL", default="")
+#
+GEMINI_FIRST_RESPONDER_SEARCH_TERM_FROM_STRING_MODEL = env(
+    "GEMINI_MODEL", default="gemini-2.5-flash-lite"
+)
+#
+GEMINI_CHAT_MODEL = env("GEMINI_CHAT_MODEL", default="gemini-2.5-flash-lite")
 
 # social / contact links
 X_URL = env("X_URL")
@@ -285,7 +290,6 @@ CELERY_ACCEPT_CONTENT = ["json"]
 # Reliability
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = TIME_ZONE  # Synchronizes Celery with your Django project timezone
-
 
 # CELERY BEAT  — periodic task schedule
 CELERY_BEAT_SCHEDULE = {

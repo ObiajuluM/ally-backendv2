@@ -9,6 +9,8 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 
 import os
 
+# from chat.AI.action import appropriate_response_from_text
+
 #
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -48,3 +50,6 @@ application = ProtocolTypeRouter(
         ),
     }
 )
+
+
+# print(appropriate_response_from_text("my chest is paining me"))

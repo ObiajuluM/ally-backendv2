@@ -6,6 +6,31 @@ from ally.models import Address
 
 
 # Create your models here.
+class ServiceArea(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    name = models.CharField(
+        max_length=255, blank=True, null=True, help_text="e.g. Lagos Mainland Zone 1"
+    )
+
+    # Each ServiceArea is a single polygon for easier spatial lookups
+    polygon = models.PolygonField(
+        blank=False,
+        null=False,
+        spatial_index=True,
+        help_text="Spatial boundary of this specific coverage zone.",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name or f"Service Area {self.id}"
+
+
 #
 class FirstResponderType(models.TextChoices):
     FIRSTAIDANDMEDICAL = "firstaidandmedical"
@@ -22,6 +47,7 @@ class OrganizationType(models.TextChoices):
     COMMUNITY = "community"
 
 
+# TODO: Make searchable
 # Tags related to types of crises or intervention
 class FirstResponderTag(models.TextChoices):
     ABUSE = "abuse"
@@ -151,14 +177,12 @@ class FirstResponder(models.Model):
         help_text='Additional metadata as JSON (e.g., {"key": "value"})',
     )
 
-    # Each entry is a polygon: a list of [lat, lng] pairs.
-    # A responder can cover multiple disconnected regions.
-    # e.g. [[[5.3,7.1],[5.3,8.0],[6.9,8.0],[6.9,7.1]], [[4.0,6.0],[4.0,7.0],[5.0,7.0],[5.0,6.0]]]
-    service_areas = models.JSONField(
+    # one FirstResponder can be assigned to many ServiceAreas, and conversely, one ServiceArea can have many FirstResponders assigned to it.
+    service_areas = models.ManyToManyField(
+        ServiceArea,
         blank=True,
-        null=True,
-        default=None,
-        help_text="List of polygons, each a list of [lat, lng] pairs defining a service area.",
+        related_name="first_responders",
+        help_text="The coverage zones assigned to this responder.",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -166,7 +190,8 @@ class FirstResponder(models.Model):
 
     class Meta:
         # ordering = ["-created_at"]
-        db_table = "ally_firstresponder"
+        # db_table = "ally_firstresponder"
+        pass
 
     def __str__(self):
         return self.name or "Unnamed First Responder"

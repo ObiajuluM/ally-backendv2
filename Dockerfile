@@ -40,9 +40,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     gdal-bin \
-    libgdal32 \
-    libgeos-c1v5 \
-    libproj25 \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
     binutils \
     && rm -rf /var/lib/apt/lists/*
 

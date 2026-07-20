@@ -15,7 +15,7 @@ class Address(models.Model):
     )
 
     location = models.PointField(
-        geography=True,
+        # geography=True,
         spatial_index=True,
         null=True,
         blank=True,
@@ -55,6 +55,7 @@ class Address(models.Model):
 
     def save(self, *args, **kwargs):
         # Run the reverse-geocode helper every time this record is saved.
+        # if not self.as_string:
         self.__address_from_longlat()
         super().save(*args, **kwargs)
 
@@ -113,7 +114,8 @@ class MyInformation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "ally_myinformation"
+        # db_table = "ally_myinformation"
+        pass
 
     def __str__(self):
         return self.name or "My information"
@@ -133,7 +135,7 @@ class User(AbstractUser):
         MyInformation, on_delete=models.CASCADE, null=True, blank=True
     )
     location = models.PointField(
-        geography=True,
+        # geography=True,
         spatial_index=True,
         null=True,
         blank=True,

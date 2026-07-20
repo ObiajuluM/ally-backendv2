@@ -6,6 +6,9 @@ serve:
 flush:
 	python manage.py flush
 
+super:
+	python manage.py createsuperuser
+
 seed:
 	python manage.py seed
 
@@ -17,9 +20,6 @@ migrate:
 
 DB_NAME = ally_dev_postgis_container
 
-start-db:
-	docker start $(DB_NAME)
-
 run-db:
 	docker run --name $(DB_NAME) \
 	  -e POSTGRES_DB=gis_db \
@@ -28,6 +28,8 @@ run-db:
 	  -p 5432:5432 \
 	  -d postgis/postgis
 
+start-db:
+	docker start $(DB_NAME)
 stop-db:
 	docker stop $(DB_NAME)
 

@@ -131,11 +131,7 @@ class MyInformationRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if not settings.DEBUG:
-            # if self.request.method == "GET":
-            self.permission_classes = [
-                IsOwner,
-                IsAuthenticated,
-            ]
+            self.permission_classes = [IsOwner, IsAuthenticated]
         return super().get_permissions()
 
     def get_object(self):
@@ -145,11 +141,9 @@ class MyInformationRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
 
 
 # --------------------------------------------------------------------------
-# USER VIEWS
-# Endpoints for the user account itself (email, phone, username, etc.).
+# USER VIEWS                                                                 
+# Endpoints for the user account itself (email, phone, username, etc.).      
 # --------------------------------------------------------------------------
-
-
 class UserListCreateView(ListCreateAPIView):
     queryset = User.objects.select_related("my_information")
     serializer_class = UserSerializer
