@@ -1,0 +1,81 @@
+To have an AI model go through specific Django tables in your PostgreSQL database, use LangChain alongside SQLAlchemy inside a custom Django management command or view. [1] 
+Django uses its own Object-Relational Mapper (ORM), while AI agents typically interact via SQLAlchemy. By using LangChain's SQLDatabase wrapper, you can pass explicit Django table names (which Django automatically prefixes with your app name) so the AI cannot access anything else. [2, 3, 4, 5] 
+------------------------------
+## 1. Install Required Packages
+Run this in your Django environment terminal:
+
+pip install langchain langchain-openai sqlalchemy psycopg2-binary
+
+------------------------------
+## 2. Identify Your Django Table Names
+Django automatically generates database table names using the format appname_modelname.
+If you have a Django app named store and a model named Product, the exact PostgreSQL table name is store_product. [6, 7, 8, 9] 
+------------------------------
+## 3. Create the AI Script (Django Management Command)
+The cleanest way to build this in Django is to create a custom management command. This allows the AI to boot up with access to your settings.py database configurations. [10] 
+Create a file at your_app/management/commands/ask_db.py:
+
+import osfrom django.core.management.base import BaseCommandfrom django.conf import settingsfrom sqlalchemy import create_enginefrom langchain_community.utilities import SQLDatabasefrom langchain_experimental.sql import SQLDatabaseChainfrom langchain_openai import ChatOpenAI
+class Command(BaseCommand):
+    help = "Allows an AI model to query specific Django PostgreSQL tables"
+
+    def add_arguments(self, parser):
+        parser.add_argument('query', type=str, help="The natural language question for the AI")
+
+    def handle(self, *args, **options):
+        # 1. Fetch your existing Django DB credentials dynamically
+        db_config = settings.DATABASES['default']
+        
+        # 2. Format the PostgreSQL connection string for SQLAlchemy
+        connection_string = f"postgresql://{db_config['USER']}:{db_config['PASSWORD']}@{db_config['HOST']}:{db_config['PORT']}/{db_config['NAME']}"
+        engine = create_engine(connection_string)
+
+        # 3. Strictly restrict the AI to SPECIFIC Django tables
+        # Format is usually: appname_modelname
+        allowed_tables = ['store_product', 'store_order'] 
+        
+        db = SQLDatabase(engine, include_tables=allowed_tables)
+
+        # 4. Initialize the AI Model (Ensure OPENAI_API_KEY is in your environment variables)
+        llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+        # 5. Create the text-to-SQL execution chain
+        db_chain = SQLDatabaseChain.from_llm(llm, db, verbose=True)
+
+        # 6. Execute the query safely
+        user_query = options['query']
+        self.stdout.write(self.style.WARNING(f"Asking AI: {user_query}\n"))
+        
+        try:
+            result = db_chain.run(user_query)
+            self.stdout.write(self.style.SUCCESS(f"\nAI Response: {result}"))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"Error executing query: {e}"))
+
+------------------------------
+## 4. Run and Test Your AI Agent
+You can now open your terminal and query your specified Django models using plain English: [11] 
+
+export OPENAI_API_KEY="your-api-key-here"
+python manage.py ask_db "What are the top 3 most expensive products and how many orders do they have?"
+
+## Why this is safe:
+
+* Table Isolation: If the user asks "Who are our users and what are their passwords?", the AI will look at allowed_tables, realize it does not have access to the auth_user table, and politely refuse.
+* Dynamic Configuration: It automatically inherits your DATABASES settings from settings.py. If you swap database credentials or move to production, your AI service connection updates automatically. [12, 13] 
+
+Would you like to see how to convert this logic into a Django REST API view so an app or frontend can chat with it, or do you need help setting up a read-only database user specifically for this AI feature?
+
+[1] [https://joegsuero.medium.com](https://joegsuero.medium.com/sqlalchemy-for-django-developers-9cb3452e796a)
+[2] [https://stackoverflow.com](https://stackoverflow.com/questions/77167937/langchain-querying-from-postgresql-database-using-sqldatabasechain)
+[3] [https://medium.com](https://medium.com/@avikumart_/how-to-build-an-ai-agent-using-llama-index-and-monsterapi-c067006e2726)
+[4] [https://learndjango.com](https://learndjango.com/courses/django-for-professionals/chapter-3-postgresql/)
+[5] [https://docs.djangoproject.com](https://docs.djangoproject.com/en/6.0/ref/models/options/)
+[6] [https://docs.djangoproject.com](https://docs.djangoproject.com/en/6.0/ref/models/options/)
+[7] [https://openclassrooms.com](https://openclassrooms.com/en/courses/6967196-create-a-web-application-with-django/7347830-capture-data-with-models-and-fields)
+[8] [https://medium.com](https://medium.com/@suhast_40578/django-fields-482f097d8689)
+[9] [https://realpython.com](https://realpython.com/move-django-model/)
+[10] [https://www.reddit.com](https://www.reddit.com/r/django/comments/se7hky/running_simple_py_script_to_populate_django_db/)
+[11] [https://ai2sql.io](https://ai2sql.io/django-sql-ai)
+[12] [https://christophergs.com](https://christophergs.com/blog/production-rag-with-postgres-vector-store-open-source-models)
+[13] [https://docs.djangoproject.com](https://docs.djangoproject.com/en/6.0/intro/tutorial02/)

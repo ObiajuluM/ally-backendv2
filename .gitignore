@@ -32,10 +32,6 @@ venv/
 ENV/
 env/
 
-# TODO: remove
-# MARK: ignore area advisor for now
-areaadvisor
-
 # Django stuff:
 *.log
 db.sqlite3

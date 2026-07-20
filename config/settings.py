@@ -77,7 +77,7 @@ INSTALLED_APPS = [
     "waitlist.apps.WaitlistConfig",
     "allyalert.apps.AllyalertConfig",
     "chat.apps.ChatConfig",
-    # "areaadvisor.apps.AreaadvisorConfig",
+    "areaadvisor.apps.AreaadvisorConfig",
     #
     "rest_framework",
     "rest_framework_gis",
