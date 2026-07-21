@@ -13,8 +13,7 @@ seed:
 	python manage.py seed
 
 migrate:
-# 	python manage.py makemigrations
-	python manage.py makemigrations ally allyalert chat firstresponder livelocation waitlist
+	python manage.py makemigrations ally allyalert chat firstresponder livelocation waitlist areaadvisor
 	python manage.py migrate
 
 
@@ -30,6 +29,7 @@ run-db:
 
 start-db:
 	docker start $(DB_NAME)
+
 stop-db:
 	docker stop $(DB_NAME)
 

@@ -8,7 +8,7 @@ from instructor import from_genai, Mode
 from ally.timeit import time_it
 from google import genai
 
-from chat.prompt import (
+from chat.prompts import (
     CHAT_MODEL_ROLE_PROMPT,
     FIRST_RESPONDER_SEARCH_TERM_FROM_STRING_MODEL_ROLE_PROMPT,
 )

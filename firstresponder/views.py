@@ -105,16 +105,17 @@ def apply_search(queryset, search_term):
         )
     )
 
-    # query = SearchQuery(search_term)
+    query = SearchQuery(search_term)
     # for raw OR searches: This gives you complete control, You can use operators.
     # query = SearchQuery(
     #     " | ".join(search_term).split(),
     #     search_type="raw",
     # )
-    query = SearchQuery(
-        search_term,
-        search_type="websearch",
-    )
+    # For web-like searches
+    # query = SearchQuery(
+    #     search_term,
+    #     search_type="websearch",
+    # )
 
     return queryset.annotate(
         search_rank=SearchRank(
@@ -184,12 +185,10 @@ class FirstResponderListView(ListAPIView):
     serializer_class = FirstResponderSerializer
 
     def get_permissions(self):
-
         if not settings.DEBUG:
             self.permission_classes = [
                 IsAuthenticated,
             ]
-
         return super().get_permissions()
 
     def get_queryset(self):
@@ -280,7 +279,7 @@ class FirstResponderListView(ListAPIView):
                 )
             )
 
-        if search:
+        if search and lat and lng:
 
             queryset = queryset.order_by(
                 "-service_priority",
@@ -288,12 +287,24 @@ class FirstResponderListView(ListAPIView):
                 "distance",
             )
 
-        elif lat and lng:
+        elif search:
 
             queryset = queryset.order_by(
-                "-service_priority",
-                "distance",
+                "-search_rank",
+                "name",
             )
+        # if search:
+        #     queryset = queryset.order_by(
+        #         "-service_priority",
+        #         "-search_rank",
+        #         "distance",
+        #     )
+
+        # elif lat and lng:
+        #     queryset = queryset.order_by(
+        #         "-service_priority",
+        #         "distance",
+        #     )
 
         else:
 
