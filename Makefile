@@ -13,7 +13,7 @@ seed:
 	python manage.py seed
 
 migrate:
-	python manage.py makemigrations ally allyalert chat firstresponder livelocation waitlist areaadvisor
+	python manage.py makemigrations ally allyalert chat firstresponder livelocation waitlist areaadvisor servicearea
 	python manage.py migrate
 
 

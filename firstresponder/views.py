@@ -31,7 +31,7 @@ from firstresponder.models import (
     FirstResponderType,
 )
 from firstresponder.serializers import FirstResponderSerializer
-from .models import ServiceArea
+from servicearea.models import ServiceArea
 
 # -------------------------------------------------------------------
 # Helpers

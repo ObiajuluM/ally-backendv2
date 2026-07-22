@@ -1,3 +1,7 @@
+# the best idea i have is to use service areas in first responder(move it to a new app) and then create a Area advisor for each area, that updates may be 4 times a day.
+# Then whenever the users location changes for atleast 10km, tell em what's up
+
+
 # AI-powered safety intelligence engine.
 # Your AI shouldn't only look at Ally alerts.
 

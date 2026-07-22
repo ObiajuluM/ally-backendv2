@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "allyalert.apps.AllyalertConfig",
     "chat.apps.ChatConfig",
     "areaadvisor.apps.AreaadvisorConfig",
+    "servicearea.apps.ServiceareaConfig",
     #
     "rest_framework",
     "rest_framework_gis",
@@ -320,6 +321,10 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # This sets task historical data to auto-expire after 7 days.
 # CELERY_RESULT_EXPIRES = 60 * 60 * 24 * 7
 
+
+# TODO: Implement: throttling, caching, pagination
+
+
 # Stop words
 STOP_WORDS = set(env.list("STOP_WORDS", default=[]))
 
@@ -349,13 +354,25 @@ JAZZMIN_SETTINGS = (
         "icons": {
             "auth": "fas fa-users-cog",
             "auth.Group": "fas fa-layer-group",
+            #
             "ally.User": "fas fa-user",
             "ally.MyInformation": "fas fa-id-card",
-            "firstresponder.FirstResponder": "fas fa-ambulance",
-            "waitlist.WaitlistEntry": "fas fa-hourglass-half",
             "ally.Address": "fas fa-map-marker-alt",
+            #
+            "firstresponder.FirstResponder": "fas fa-ambulance",
+            "servicearea.ServiceArea": "fas fa-globe",
+            #
+            "waitlist.WaitlistEntry": "fas fa-hourglass-half",
+            #
             "livelocation.LiveLocationSession": "fas fa-broadcast-tower",
             "livelocation.SessionParticipant": "fas fa-street-view",
+            #
+            "allyalert.AllyAlert": "fas fa-exclamation-triangle",
+            "allyalert.AlertReport": "fas fa-file-invoice",
+            "allyalert.AlertDelivery": "fas fa-bell",  # Notification/delivery icon
+            #
+            "chat.Chat": "fas fa-envelope",
+            "chat.Message": "fas fa-comments",
         },
         "default_icon_parents": "fas fa-chevron-circle-right",
         "default_icon_children": "fas fa-circle",

@@ -4,7 +4,7 @@ from ally.models import Address
 from ally.serializers import AddressSerializer, address_has_content
 from firstresponder.models import FirstResponder, FirstResponderTag
 
-from .models import ServiceArea
+from servicearea.models import ServiceArea
 
 
 class ServiceAreaSerializer(serializers.ModelSerializer):
