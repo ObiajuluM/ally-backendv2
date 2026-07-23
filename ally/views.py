@@ -91,6 +91,13 @@ class GoogleAuthView(APIView):
                 user.my_information = MyInformation.objects.create(name=name)
                 user.save(update_fields=["my_information"])
 
+            # If a user has been banned or deactivated, we don't let them log in.
+            if not user.is_active:
+                return Response(
+                    {"detail": "Your account has been disabled, contact support."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             # Give the user a JWT (JSON Web Token) — like a temporary pass/wristband
             # that proves who they are without needing to log in again on every request.
             # refresh = long-lived token to get new access tokens.
@@ -141,8 +148,8 @@ class MyInformationRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
 
 
 # --------------------------------------------------------------------------
-# USER VIEWS                                                                 
-# Endpoints for the user account itself (email, phone, username, etc.).      
+# USER VIEWS
+# Endpoints for the user account itself (email, phone, username, etc.).
 # --------------------------------------------------------------------------
 class UserListCreateView(ListCreateAPIView):
     queryset = User.objects.select_related("my_information")

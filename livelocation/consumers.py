@@ -118,7 +118,7 @@ class LiveLocationConsumer(WebsocketConsumer):
         self.send(text_data=json.dumps(location_data))
 
     def user_can_publish(self) -> bool:
-        """A client may publish only when it is authenticated and connected to the room named after that user's UUID."""
+        """A client may publish only when it is authenticated and connected to the room named after that user's UUID and is not blocked."""
         user = self.scope.get("user")
         # return bool(user and user.is_authenticated and str(user.id) == self.room_name)
         # REMEMBER: In development mode, we allow any user to publish for testing purposes. In production, only the authenticated user whose ID matches the room name can publish.
@@ -126,6 +126,7 @@ class LiveLocationConsumer(WebsocketConsumer):
             True
             if settings.DEBUG
             else bool(user and user.is_authenticated and str(user.id) == self.room_name)
+            and user.is_active
         )
 
     def get_real_ip(self, scope: _ChannelScope):

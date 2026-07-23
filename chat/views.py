@@ -62,7 +62,7 @@ class SendMessageView(APIView):
                 "content": message.content,
                 "role": message.role,
                 "created_at": message.created_at,
-                "reply": reply_message,
+                "reply": reply_message.content,
             },
             status=status.HTTP_200_OK,
         )

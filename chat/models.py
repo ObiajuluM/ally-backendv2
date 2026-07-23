@@ -39,7 +39,7 @@ class Message(models.Model):
         on_delete=models.CASCADE,
     )
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.USER)
-    content = models.TextField(blank=True)
+    content = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

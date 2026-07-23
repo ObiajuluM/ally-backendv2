@@ -4,6 +4,8 @@ languages
 Do caching and pagination
 App -> backend versioning, so users on older versions will be told to update
 
+Emails
+SMS
 
 
 

@@ -218,6 +218,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        # Custom JWT auth that checks user.is_active (blocked status)
+        "ally.custom.AllyJWTAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         # Allows you to use the standard DRF UI Log In button
         "rest_framework.authentication.SessionAuthentication",
