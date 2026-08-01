@@ -12,9 +12,9 @@ class AllyAlert(models.Model):
     """
 
     class Status(models.TextChoices):
-        ACTIVE = "ACTIVE", "Active"
-        EXPIRED = "EXPIRED", "Expired"
-        REMOVED = "REMOVED", "Removed"
+        ACTIVE = "active"
+        EXPIRED = "expired"
+        REMOVED = "removed"
 
     id = models.UUIDField(
         primary_key=True,
@@ -132,12 +132,12 @@ class AlertReport(models.Model):
     """
 
     class Reason(models.TextChoices):
-        HELPFUL = "HELPFUL", "Helpful"
-        NOT_HELPFUL = "NOT_HELPFUL", "Not Helpful"
-        FALSE_INFORMATION = "FALSE_INFORMATION", "False Information"
-        SPAM = "SPAM", "Spam"
-        WRONG_LOCATION = "WRONG_LOCATION", "Wrong Location"
-        OTHER = "OTHER", "Other"
+        HELPFUL = "helpful"
+        NOTHELPFUL = "nothelpful"
+        FALSEINFORMATION = "falseinformation"
+        SPAM = "spam"
+        WRONGLOCATION = "wronglocation"
+        OTHER = "other"
 
     id = models.UUIDField(
         primary_key=True,
@@ -185,48 +185,3 @@ class AlertReport(models.Model):
 
     def __str__(self):
         return f"{self.reporter} reported {self.alert_id}"
-
-
-# class AllyAlertMedia(models.Model):
-#     """
-#     Optional media attachments (images, videos, audio) associated with an alert.
-#     Multiple files can be attached to a single alert.
-#     """
-
-#     class MediaType(models.TextChoices):
-#         IMAGE = "IMAGE", "Image"
-#         VIDEO = "VIDEO", "Video"
-#         AUDIO = "AUDIO", "Audio"
-
-#     alert = models.ForeignKey(
-#         AllyAlert,
-#         on_delete=models.CASCADE,
-#         related_name="media",
-#     )
-
-#     media_type = models.CharField(
-#         max_length=10,
-#         choices=MediaType.choices,
-#     )
-
-#     # Files are stored under MEDIA_ROOT/ally_alerts/.
-#     file = models.FileField(upload_to="ally_alerts/")
-
-#     uploaded_at = models.DateTimeField(auto_now_add=True)
-
-
-# from django.db.models.signals import post_save
-# from django.dispatch import receiver
-
-
-# @receiver(post_save, sender=AllyAlert)
-# def create_ally_alert_delivery(sender, instance, created, **kwargs):
-#     """
-#     Triggers automatically whenever an AllyAlert instance is saved.
-#     """
-#     if created:  # Ensures this only runs on creation, not on updates
-#         AlertDelivery.objects.create(
-#             alert=instance,
-#             user=User.objects.get(pk="488cd143-4936-43b5-910a-76cc0b09908a"),
-#             # Set your initial default status
-#         )
