@@ -45,6 +45,8 @@ class LiveLocationConsumer(WebsocketConsumer):
         # Cache the publish permission once on connect so receive() can make a quick decision for every incoming socket message.
         self.can_publish = self.user_can_publish()
 
+        # TODO: look to sending sms here if the user can publish
+
         # Every socket in the same room joins the same channel-layer group, which
         # lets one published update fan out to every connected viewer.
         self.room_group_name = f"live_{self.room_name}"
