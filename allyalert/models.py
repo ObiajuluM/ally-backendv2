@@ -33,7 +33,7 @@ class AllyAlert(models.Model):
 
     # The user's GPS position at the moment they created the alert.
     created_location = models.PointField(
-        # geography=True,
+        geography=True,
         spatial_index=True,
         null=True,
         blank=True,
@@ -42,7 +42,7 @@ class AllyAlert(models.Model):
     # The center point of the affected area. Users within radius_km of this point
     # will be notified. Spatially indexed for fast proximity queries.
     target_location = models.PointField(
-        # geography=True,
+        geography=True,
         spatial_index=True,
         null=True,
         blank=True,

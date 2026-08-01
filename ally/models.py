@@ -15,7 +15,7 @@ class Address(models.Model):
     )
 
     location = models.PointField(
-        # geography=True,
+        geography=True,
         spatial_index=True,
         null=True,
         blank=True,
@@ -135,7 +135,7 @@ class User(AbstractUser):
         MyInformation, on_delete=models.CASCADE, null=True, blank=True
     )
     location = models.PointField(
-        # geography=True,
+        geography=True,
         spatial_index=True,
         null=True,
         blank=True,
