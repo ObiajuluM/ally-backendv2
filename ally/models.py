@@ -159,18 +159,20 @@ class User(AbstractUser):
         return f"{self.username} --- {self.email}"
 
 
-# When a User is deleted, also delete their linked MyInformation.
-# This is necessary because the FK lives on User, so Django's built-in
-# CASCADE only protects the reverse direction (MyInformation → User).
-@receiver(post_delete, sender=User)
-def delete_my_information_on_user_delete(sender, instance, **kwargs):
-    if instance.my_information_id:
-        MyInformation.objects.filter(pk=instance.my_information_id).delete()
+#  for firebase coco
+class UserDevice(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
 
+    fcm_token = models.TextField(unique=True)
 
-# When a MyInformation row is deleted (e.g. triggered by the signal above),
-# also delete the linked Address row.
-@receiver(post_delete, sender=MyInformation)
-def delete_address_on_my_information_delete(sender, instance, **kwargs):
-    if instance.address_id:
-        Address.objects.filter(pk=instance.address_id).delete()
+    platform = models.CharField(
+        max_length=20,
+        choices=[
+            ("android", "android"),
+            ("ios", "ios"),
+        ],
+    )
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

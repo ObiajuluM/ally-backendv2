@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from config import settings
-from .models import MyInformation, User
+from .models import MyInformation, User, UserDevice
 from .serializers import (
     MyInformationSerializer,
     UserSerializer,
@@ -198,4 +198,28 @@ class GeminidView(RetrieveUpdateDestroyAPIView):
                 "whatsapp": settings.WHATSAPP_URL,
                 "youtube": settings.YOUTUBE_PLAYLIST,
             }
+        )
+
+
+class RegisterFCMTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        print("RegisterFCMTokenView called")
+        fcm_token = request.data.get("fcm_token")
+        platform = request.data.get("platform", "android")
+
+        if not fcm_token:
+            return Response(
+                {"error": "fcm_token is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update or create device entry for the authenticated user
+        device, created = UserDevice.objects.update_or_create(
+            fcm_token=fcm_token, defaults={"user": request.user, "platform": platform}
+        )
+
+        return Response(
+            {"message": "Token registered successfully", "created": created},
+            status=status.HTTP_200_OK,
         )

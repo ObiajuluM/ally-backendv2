@@ -11,8 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from datetime import timedelta
+import json
 from pathlib import Path
 import os
+import firebase_admin
+from firebase_admin import credentials
 from celery.schedules import crontab
 
 # import environ
@@ -322,6 +325,50 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # Unchecked records sit in your database forever, degrading query speeds.
 # This sets task historical data to auto-expire after 7 days.
 # CELERY_RESULT_EXPIRES = 60 * 60 * 24 * 7
+
+
+# MARK: Email Configuration
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env("EMAIL_USE_SSL", default=False)
+
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+SERVER_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+
+# MARK: SMS Configuration
+SMS_USERNAME = env("SMS_USERNAME", default="")
+SMS_PASSWORD = env("SMS_PASSWORD", default="")
+
+# MARK: FCM configuration
+# Path to your firebase service account JSON file
+
+# 1. Try loading from Environment Variable (Linux / Production)
+FIREBASE_CREDENTIALS = os.environ.get("FIREBASE_CREDENTIALS")
+
+# Initialize Firebase Admin SDK
+if FIREBASE_CREDENTIALS:
+    # Parse the stringified JSON from the environment variable
+    cred_dict = json.loads(
+        FIREBASE_CREDENTIALS.replace("\r", "").replace("\n", "").replace("'", '"')
+    )
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred)
+else:
+    # 2. Fallback to Local File (Windows / Development)
+    CREDENTIAL_PATH = os.path.join(
+        os.path.dirname(__file__), "firebase-service-account.json"
+    )
+    if os.path.exists(CREDENTIAL_PATH):
+        cred = credentials.Certificate(CREDENTIAL_PATH)
+        firebase_admin.initialize_app(cred)
+    else:
+        raise FileNotFoundError("Firebase credentials not found in env or local file.")
 
 
 # TODO: Implement: throttling, caching, pagination

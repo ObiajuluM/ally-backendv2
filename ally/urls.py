@@ -3,6 +3,7 @@ from ally.views import (
     GeminidView,
     GoogleAuthView,
     MyInformationRetrieveUpdateDestroyView,
+    RegisterFCMTokenView,
     UserListCreateView,
     UserRetrieveUpdateDestroyView,
 )
@@ -35,6 +36,9 @@ urlpatterns = [
         UserRetrieveUpdateDestroyView.as_view(),
         name="user-retrieve-update-destroy",
     ),
+    # FCM
+    # "register-fcm"
+    path("fcm/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
     # Gemini
     path("geminid/", GeminidView.as_view(), name="geminid"),
     #
