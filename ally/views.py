@@ -19,13 +19,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from rest_framework.permissions import BasePermission
 
+
 # --------------------------------------------------------------------------
 # PERMISSIONS
 # Think of permissions like a bouncer at a door.
 # Before letting anyone in, the bouncer checks if they're allowed.
 # --------------------------------------------------------------------------
-
-
 class APIPermission(BasePermission):
     # By default, this bouncer does NOT let read-only requests through automatically.
     allow_read_only = False

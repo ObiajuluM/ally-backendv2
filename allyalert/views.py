@@ -17,50 +17,36 @@ from config import settings
 
 
 class AllyAlertListCreateView(ListCreateAPIView):
-    """
-    GET  /v1/alerts/         — list all ACTIVE alerts, newest first
-    GET  /v1/alerts/?mine=true — list every alert the requester created
-                                 (all statuses: active, expired, removed)
-    POST /v1/alerts/         — create a new alert
-    """
-
     serializer_class = AllyAlertSerializer
+    queryset = AllyAlert.objects.select_related("creator").order_by("-created_at")
 
     def get_permissions(self):
         if not settings.DEBUG:
             self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
 
-    def get_queryset(self):
-        # ?mine=true  →  return all alerts created by the requesting user
-        #                regardless of status, so they can see their full history.
-        # default     →  return only ACTIVE alerts visible to everyone.
-        if self.request.query_params.get("mine", "").lower() == "true":
-            return (
-                AllyAlert.objects.filter(creator=self.request.user)
+    def list(self, request, *args, **kwargs):
+        if request.query_params.get("mine", "").lower() == "true":
+            queryset = (
+                AllyAlert.objects.filter(creator=request.user)
                 .select_related("creator")
                 .order_by("-created_at")
             )
-        # TODO: the return statement below should be location based clause
-        return (
-            AllyAlert.objects.filter(status=AllyAlert.Status.ACTIVE)
-            .select_related("creator")
-            .order_by("-created_at")
-        )
+        else:
+            # TODO: make location based filtering for alerts, so that users only see alerts relevant to their location.
+            queryset = (
+                AllyAlert.objects.filter(status=AllyAlert.Status.ACTIVE)
+                .select_related("creator")
+                .order_by("-created_at")
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         # Bind the authenticated user as the creator so clients
         # cannot spoof a different creator in the request body.
-        alert = serializer.save(creator=self.request.user)
-
-        # Chain the two tasks so notifications only fire AFTER all delivery
-        # rows are committed. .si() (immutable signature) means the return
-        # value of create_alert_deliveries is not passed as an argument to
-        # send_alert_push_notifications — each task receives only its own args.
-        # chain(
-        #     create_alert_deliveries.si(str(alert.pk)),
-        #     send_alert_push_notifications.si(str(alert.pk)),
-        # ).delay()
+        serializer.save(creator=self.request.user)
 
 
 class AllyAlertRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):

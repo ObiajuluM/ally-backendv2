@@ -110,3 +110,23 @@ docker push <your-username>/ally-backend:latest
 
 One security note: your .env file contains real secrets (API keys, DB password,
 
+
+
+Obiajulu is sharing their live location with you.
+
+View: https://safetyally.app/l/fcca043a-fdd5-4f2c-b931-bc8d7be6a3e7
+
+If you cannot reach them, please contact local emergency services.
+
+
+Or for an emergency:
+
+🚨 Ally Emergency
+
+Obiajulu may need assistance.
+
+Last known location:
+https://ally.app/l/abc123
+
+If you cannot reach them, please contact local emergency services.
+

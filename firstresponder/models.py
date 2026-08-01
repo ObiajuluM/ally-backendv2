@@ -172,6 +172,7 @@ class FirstResponder(models.Model):
         return self.name or "Unnamed First Responder"
 
 
+# TODO: move to a signals.py file
 # When a FirstResponder is deleted, also delete their linked Address.
 @receiver(post_delete, sender=FirstResponder)
 def delete_address_on_first_responder_delete(sender, instance, **kwargs):

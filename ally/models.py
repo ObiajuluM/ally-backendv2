@@ -1,7 +1,5 @@
 from django.contrib.gis.db import models
 from django.contrib.auth.models import AbstractUser
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 import uuid
 from geopy.geocoders import Nominatim
 
@@ -43,6 +41,7 @@ class Address(models.Model):
         # Initialize Nominatim API
         geolocator = Nominatim(user_agent="ally")
 
+        # if not self.as_string:
         # Check if coordinates exist using your properties
         if self.latitude is not None and self.longitude is not None:
             try:

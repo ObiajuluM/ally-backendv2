@@ -5,7 +5,6 @@ from __future__ import (
 from typing import TYPE_CHECKING
 from django.utils import timezone
 
-from ally.models import User
 from livelocation.models import (
     LiveLocationSession,
     SessionParticipant,

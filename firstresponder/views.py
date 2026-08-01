@@ -211,7 +211,6 @@ class FirstResponderListView(ListAPIView):
         # No filters supplied
         # Return empty response instead of all responders
         # REMEMBER: the below return was emptied out to avoid scrapers-------------------------------------------------------------
-
         if not settings.DEBUG:
             if not search and not responder_type and not (lat and lng):
                 return FirstResponder.objects.none()
