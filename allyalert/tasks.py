@@ -1,6 +1,9 @@
 from celery import shared_task
 from django.utils import timezone
 
+from ally.models import User
+from ally.services import fcm_send_push_notification
+
 # --------------------------------------------------------------------------
 # TRIGGERED TASKS
 # These are fired manually (e.g. from a view) when something happens.
@@ -75,6 +78,7 @@ def send_alert_push_notifications(self, alert_id: str):
     The delivery rows are already written by create_alert_deliveries before
     this task runs.
     """
+    print(f"Running send_alert_push_notifications for alert {alert_id}...")
     from allyalert.models import AllyAlert, AlertDelivery
 
     try:
@@ -87,15 +91,22 @@ def send_alert_push_notifications(self, alert_id: str):
         "user_id", flat=True
     )
 
-    # TODO: integrate your push provider here.
-    # Example payload to send to each device token:
-    # {
-    #     "title": alert.title,
-    #     "body": alert.description[:100],
-    #     "data": {"alert_id": str(alert.id)},
-    # }
-    for user_id in recipient_ids:
-        pass  # replace with: fcm_send(token=get_token(user_id), ...)
+    # 1. Fetch all matching users in ONE single database call
+    users = User.objects.filter(pk__in=recipient_ids)
+
+    # 2. Loop over the successfully fetched user objects
+    for user in users:
+        try:
+            fcm_send_push_notification(
+                user=user,
+                title=alert.title,
+                body=alert.description[:100],
+                extra_data={"alert_id": str(alert.id)},
+            )
+        except Exception as e:
+            # Keep this catch-all block ONLY around the notification function
+            # so one failing notification doesn't stop the whole loop.
+            print(f"Failed to send notification to user {user.id}: {e}")
 
 
 # --------------------------------------------------------------------------
