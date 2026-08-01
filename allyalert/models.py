@@ -78,6 +78,22 @@ class AllyAlert(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def created_location_longitude(self):
+        return self.created_location.x if self.created_location else None
+
+    @property
+    def created_location_latitude(self):
+        return self.created_location.y if self.created_location else None
+
+    @property
+    def target_location_longitude(self):
+        return self.target_location.x if self.target_location else None
+
+    @property
+    def target_location_latitude(self):
+        return self.target_location.y if self.target_location else None
+
     class Meta:
         # Composite index to speed up the common query: fetch all ACTIVE alerts
         # that haven't expired yet.

@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework_gis.fields import GeometryField
 from django.contrib.gis.geos import Point
 
 from .models import Address, MyInformation, User
@@ -173,15 +172,10 @@ class MyInformationSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    #     my_information = serializers.HyperlinkedRelatedField(
-    #     view_name="myinformation-detail",
-    #     queryset=MyInformation.objects.all(),
-    #     required=False,
-    #     allow_null=True,
-    # )
     my_information = MyInformationSerializer(required=False, allow_null=True)
-    # GeoJSON point — accepts/returns {"type": "Point", "coordinates": [lng, lat]}
-    location = GeometryField(required=False, allow_null=True)
+
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -191,7 +185,14 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "username",
             "my_information",
-            "location",
+            "latitude",
+            "longitude",
             "is_streaming",
         ]
         read_only_fields = ["id"]
+
+    def get_latitude(self, obj):
+        return obj.location.y if obj.location else None
+
+    def get_longitude(self, obj):
+        return obj.location.x if obj.location else None
