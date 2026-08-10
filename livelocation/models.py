@@ -26,6 +26,7 @@ class LiveLocationSession(models.Model):
         null=True,
         # help_text="Availability e.g. '24/7'",
     )
+    metadata = models.CharField(max_length=50000, blank=True, null=True)
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
 

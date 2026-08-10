@@ -2,10 +2,22 @@ import requests
 
 from ally.models import User
 from config.settings import SMS_USERNAME, SMS_PASSWORD
+import uuid
+import base64
 
 
-def shortenurl(url: str) -> str:
-    return url
+def shorten_uuid(uid: str) -> str:
+    u = uid if isinstance(uid, uuid.UUID) else uuid.UUID(uid)
+    encoded = base64.urlsafe_b64encode(u.bytes).decode().rstrip("=")
+    print(encoded)
+    return encoded
+
+
+def expand_uuid(encoded: str) -> str:
+    padding = "=" * (-len(encoded) % 4)
+    decoded = uuid.UUID(bytes=base64.urlsafe_b64decode(encoded + padding))
+    print(decoded)
+    return str(decoded)
 
 
 def get_matching_trusted_contacts(user: User, numbers: list[str]) -> list[str]:
@@ -35,10 +47,7 @@ def send_sms(user: User, phone_numbers: list[str]) -> bool:
     try:
         # Generate the message text
         first_name = user.username.split()[0]
-        msg = f"""
-            {first_name} is sharing their live location with you.
-            View: {shortenurl(f"https://safetyally.app/l/{user.id}")}
-            """
+        msg = f"""{first_name[:3]}.. is sharing their live location with you: https://safetyally.app/l/{shorten_uuid(user.id)}"""
 
         # send sms
         response = requests.post(

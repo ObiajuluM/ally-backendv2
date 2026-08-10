@@ -15,7 +15,7 @@ from chat.prompts import (
 from config.settings import (
     GEMINI_API_KEY,
     GEMINI_CHAT_MODEL,
-    GEMINI_FIRST_RESPONDER_SEARCH_TERM_FROM_STRING_MODEL,
+    GEMINI_MODEL_,
 )
 
 
@@ -29,7 +29,7 @@ def first_responder_search_term_from_string(string: str) -> Union[str, None]:
         client = from_genai(raw_client, mode=Mode.TOOLS)
         # runt he prompt to get the first responder search term from the string
         result = client.chat.completions.create(
-            model=GEMINI_FIRST_RESPONDER_SEARCH_TERM_FROM_STRING_MODEL,
+            model=GEMINI_MODEL_,
             # messages=[{"role": ROLE, "content": string}],
             messages=[
                 {

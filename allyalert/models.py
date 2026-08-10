@@ -2,6 +2,12 @@ import uuid
 from ally.models import User
 from django.contrib.gis.db import models
 from django.contrib.postgres import fields
+from datetime import timedelta
+from django.utils import timezone
+
+
+def get_default_expiration():
+    return timezone.now() + timedelta(days=5)
 
 
 class AllyAlert(models.Model):
@@ -60,7 +66,7 @@ class AllyAlert(models.Model):
 
     # After this datetime the alert is considered stale and should be marked EXPIRED.
     # TODO: add time data from the front + current to set expiry date, not more than 5 days from now. If the user doesn't provide a time, default to 1 hour from now.
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(default=get_default_expiration)
 
     status = models.CharField(
         max_length=20,

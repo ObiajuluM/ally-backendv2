@@ -8,13 +8,15 @@ from django.utils import timezone
 from livelocation.models import (
     LiveLocationSession,
     SessionParticipant,
-)  # for typechecking the channel scope
+)
+from livelocation.sms import expand_uuid, send_sms  # for typechecking the channel scope
 
 if TYPE_CHECKING:  # for typechecking the channel scope
     # This import only happens during type checking, never at runtime
     from channels.consumer import _ChannelScope  # for typechecking the channel scope
 
 import json
+from urllib.parse import parse_qs
 
 from asgiref.sync import async_to_sync
 
@@ -39,12 +41,10 @@ class LiveLocationConsumer(WebsocketConsumer):
     def connect(self):
         # The room name comes from the websocket URL and identifies whose live
         # location stream this socket is subscribing to.
-        self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
+        self.room_name = expand_uuid(self.scope["url_route"]["kwargs"]["room_name"])
 
         # Cache the publish permission once on connect so receive() can make a quick decision for every incoming socket message.
         self.can_publish = self.user_can_publish()
-
-        # TODO: look to sending sms here if the user can publish
 
         # Every socket in the same room joins the same channel-layer group, which
         # lets one published update fan out to every connected viewer.
@@ -201,8 +201,12 @@ class LiveLocationConsumer(WebsocketConsumer):
     def on_connect(self):
         """helper method for when a user connects, to log the session and participant information."""
 
-        # 1. Force evaluate the lazy object to get the real object wrapper
-        user_instance = self.scope["user"]._wrapped
+        # 1. Safely handles both SimpleLazyObject and real User instances
+        user = self.scope.get("user")
+        user_instance = getattr(user, "_wrapped", user)
+        print(
+            f"Tracking id: {self.scope["url_route"]["kwargs"]["room_name"]} | User {user.id} attempting to connect to room {self.room_name}. Can publish: {self.can_publish}"
+        )
         # 2. Check if the user is logged in
         if user_instance and user_instance.is_authenticated:
             self.db_user = user_instance
@@ -212,9 +216,25 @@ class LiveLocationConsumer(WebsocketConsumer):
         # if this is the publisher, we can log that they connected.
         if self.can_publish:
             try:
+                # Publishers must supply at least one recipient; viewers don't notify anyone.
+                # REMEMBER: In development mode this will throw an error because anyone is the publisher and if you attempt to connect withpout a list of phones as the publisher, it will throw an error that looks lke LiveConsumer.....
+                if self.can_publish:
+                    qs = parse_qs(self.scope["query_string"].decode())
+                    self.phones = qs.get("phone", [])
+                    if self.phones:
+                        # Notify trusted contacts that a live location session has started.
+                        # pass
+                        print(
+                            f"Sending SMS to {self.phones} for user {self.scope['user'].id}"
+                        )
+                        send_sms(self.db_user, self.phones)
+                        # Decline before accept() — Channels treats close-before-accept as a rejection.
+                        # self.close(code=4400, reason="Missing phone numbers in query string.")
+
                 self.active_session = LiveLocationSession.objects.create(
                     user=self.db_user,
                     room_name=self.room_name,
+                    metadata=self.scope.__str__(),
                 )
                 # then change their is streaming status to true
                 self.db_user.is_streaming = True
@@ -225,8 +245,8 @@ class LiveLocationConsumer(WebsocketConsumer):
                 print(
                     f"Error creating LiveLocationSession: {e}: This is most likely because the session already exists. The publisher should not connect twice."
                 )
-        # if this is a viewer, we can log that they connected.
         else:
+            # if this is a viewer, we can log that they connected.
             try:
                 self.active_participant = SessionParticipant.objects.create(
                     session=LiveLocationSession.objects.get(id=self.active_session.id),

@@ -7,10 +7,20 @@ from config import settings
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
-app = Celery("config")
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+
+# Add the include argument here
+app = Celery("config", include=["config.tasks"])
+
 app.config_from_object("django.conf:settings", namespace="CELERY")
 # This single line handles everything dynamically
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
+
+# app = Celery("config")
+# app.config_from_object("django.conf:settings", namespace="CELERY")
+# # This single line handles everything dynamically
+# app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 # app.autodiscover_tasks(
 #     ["config",]

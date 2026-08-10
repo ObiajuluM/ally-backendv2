@@ -12,7 +12,7 @@ from django.utils.html import format_html
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
-from .models import Address, MyInformation, User
+from .models import Address, MyInformation, User, UserDevice
 
 admin.site.site_header = "Ally Admin"
 admin.site.site_title = "Ally Admin"
@@ -467,3 +467,20 @@ class UserAdmin(BaseUserAdmin):
             url,
             label,
         )
+
+
+@admin.register(UserDevice)
+class UserDeviceAdmin(admin.ModelAdmin):
+    list_display = ("user_link", "platform", "is_active", "created_at", "updated_at")
+    list_filter = ("platform", "is_active")
+    search_fields = ("user__email", "user__username", "fcm_token")
+    ordering = ("-created_at",)
+    readonly_fields = ("created_at", "updated_at")
+    list_select_related = ("user",)
+    list_per_page = 25
+    empty_value_display = "-"
+
+    @admin.display(description="User")
+    def user_link(self, obj):
+        url = reverse("admin:ally_user_change", args=[obj.user_id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.email or obj.user_id)

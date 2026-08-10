@@ -222,7 +222,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         # Custom JWT auth that checks user.is_active (blocked status)
-        "ally.custom.AllyJWTAuthentication",
+        "ally.authmiddleware.AllyJWTAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         # Allows you to use the standard DRF UI Log In button
         "rest_framework.authentication.SessionAuthentication",
@@ -246,9 +246,7 @@ GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 # MARK: Gemini Configuration
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 #
-GEMINI_FIRST_RESPONDER_SEARCH_TERM_FROM_STRING_MODEL = env(
-    "GEMINI_MODEL", default="gemini-2.5-flash-lite"
-)
+GEMINI_MODEL_ = env("GEMINI_MODEL", default="gemini-2.5-flash-lite")
 #
 GEMINI_CHAT_MODEL = env("GEMINI_CHAT_MODEL", default="gemini-2.5-flash-lite")
 

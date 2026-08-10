@@ -32,7 +32,7 @@ class SendSMSView(APIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
-        phone_numbers = request.data.get("phone_numbers", [])
+        phone_numbers = request.data.get("phones", [])
 
         if not phone_numbers:
             return Response(

@@ -174,8 +174,8 @@ class MyInformationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     my_information = MyInformationSerializer(required=False, allow_null=True)
 
-    latitude = serializers.SerializerMethodField()
-    longitude = serializers.SerializerMethodField()
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -191,8 +191,27 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
-    def get_latitude(self, obj):
-        return obj.location.y if obj.location else None
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["latitude"] = instance.location.y if instance.location else None
+        rep["longitude"] = instance.location.x if instance.location else None
+        return rep
 
-    def get_longitude(self, obj):
-        return obj.location.x if obj.location else None
+    def update(self, instance, validated_data):
+        lat = validated_data.pop("latitude", None)
+        lon = validated_data.pop("longitude", None)
+
+        if lat is not None and lon is not None:
+            instance.location = Point(lon, lat)
+        elif lat is None and lon is None:
+            pass  # no location keys sent — leave existing value untouched
+        else:
+            raise serializers.ValidationError(
+                "Both latitude and longitude must be provided together."
+            )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance

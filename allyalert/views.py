@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from django.contrib.gis.measure import Distance
 from django.utils import timezone
 
 from ally.views import IsOwner
@@ -14,6 +15,7 @@ from allyalert.serializers import (
     AllyAlertSerializer,
 )
 from config import settings
+from allyalert.actions import ally_alert_from_text
 
 
 class AllyAlertListCreateView(ListCreateAPIView):
@@ -33,15 +35,45 @@ class AllyAlertListCreateView(ListCreateAPIView):
                 .order_by("-created_at")
             )
         else:
-            # TODO: make location based filtering for alerts, so that users only see alerts relevant to their location.
-            queryset = (
-                AllyAlert.objects.filter(status=AllyAlert.Status.ACTIVE)
-                .select_related("creator")
-                .order_by("-created_at")
-            )
+            user_location = getattr(request.user, "location", None)
+            qs = AllyAlert.objects.filter(
+                status=AllyAlert.Status.ACTIVE
+            ).select_related("creator")
+            if user_location:
+                # geography=True on the field means PostGIS measures in metres, so Distance(km=1) = 1000 m.
+                qs = qs.filter(
+                    target_location__distance_lte=(user_location, Distance(km=1))
+                )
+            # No location on the user record — return all active alerts as a safe fallback.
+            queryset = qs.order_by("-created_at")
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        alert_text = request.data.get("alert_text", "").strip()
+        data = request.data.copy()
+        data.pop("alert_text", None)
+
+        if alert_text:
+            ai_result = ally_alert_from_text(alert_text)
+            if ai_result is None:
+                data["title"] = "Alert"
+                data["description"] = alert_text[:150]
+                # return Response(
+                #     {"error": "Failed to process alert text. Please try again."},
+                #     status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                # )
+            data["title"] = ai_result.title
+            data["description"] = ai_result.description
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def perform_create(self, serializer):
         # Bind the authenticated user as the creator so clients
@@ -154,6 +186,6 @@ class AlertReportListCreateView(ListCreateAPIView):
             field_to_update = "helpful_count"
         else:
             alert.report_count.append(self.request.user.id)
-            field_to_update = "helpful_count"
+            field_to_update = "report_count"
         # Force Django to save the specific modified field
         alert.save(update_fields=[field_to_update])
