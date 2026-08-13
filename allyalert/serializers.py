@@ -83,6 +83,7 @@ class AllyAlertSerializer(serializers.ModelSerializer):
             #
             "target_location_longitude",
             "target_location_latitude",
+            "target_location_as_string",
             "radius_km",
             "expires_at",
             "status",
@@ -94,6 +95,7 @@ class AllyAlertSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "status",
+            "target_location_as_string",
             "helpful_count",
             "report_count",
             "created_at",

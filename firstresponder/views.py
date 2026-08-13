@@ -25,6 +25,7 @@ from rest_framework.generics import (
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from ally.timeit import time_it
 from config import settings
 from firstresponder.models import (
     FirstResponder,
@@ -311,6 +312,7 @@ class FirstResponderListView(ListAPIView):
 
         return queryset
 
+    @time_it
     def list(self, request, *args, **kwargs):
 
         queryset = self.get_queryset()

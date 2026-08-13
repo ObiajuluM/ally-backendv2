@@ -30,7 +30,8 @@ def fcm_send_push_notification(user, title, body, extra_data=None):
         android=messaging.AndroidConfig(
             priority="high",
             notification=messaging.AndroidNotification(
-                sound="default", channel_id="high_importance_channel"
+                sound="default",
+                channel_id="ally_fcm_channel_id",
             ),
         ),
     )
@@ -44,5 +45,9 @@ def fcm_send_push_notification(user, title, body, extra_data=None):
                 # Token might be expired or unregistered
                 failed_token = tokens[idx]
                 UserDevice.objects.filter(fcm_token=failed_token).delete()
+
+    print(
+        f"Successfully sent {response.success_count} messages, failed {response.failure_count} messages."
+    )
 
     return True, f"Successfully sent {response.success_count} messages"

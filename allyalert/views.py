@@ -42,7 +42,7 @@ class AllyAlertListCreateView(ListCreateAPIView):
             if user_location:
                 # geography=True on the field means PostGIS measures in metres, so Distance(km=1) = 1000 m.
                 qs = qs.filter(
-                    target_location__distance_lte=(user_location, Distance(km=1))
+                    target_location__distance_lte=(user_location, Distance(km=2))
                 )
             # No location on the user record — return all active alerts as a safe fallback.
             queryset = qs.order_by("-created_at")
@@ -58,7 +58,7 @@ class AllyAlertListCreateView(ListCreateAPIView):
         if alert_text:
             ai_result = ally_alert_from_text(alert_text)
             if ai_result is None:
-                data["title"] = "Alert"
+                data["title"] = alert_text[:150]
                 data["description"] = alert_text[:150]
                 # return Response(
                 #     {"error": "Failed to process alert text. Please try again."},
@@ -168,24 +168,29 @@ class AlertReportListCreateView(ListCreateAPIView):
     def get_queryset(self):
         """Make sure to only return reports for ACTIVE alerts, so that users cannot see reports for removed or expired alerts."""
         return (
-            AlertReport.objects.filter(alert__status=AllyAlert.Status.ACTIVE)
+            AlertReport.objects.filter(
+                alert__status=AllyAlert.Status.ACTIVE,
+            )
             .select_related("reporter", "alert")
             .order_by("-created_at")
         )
 
     def perform_create(self, serializer):
-        # Bind the authenticated user as the reporter so clients
-        # cannot spoof a different reporter in the request body.
-        # TODO: Add logic to increment the report_count or helpful_count  on the associated AllyAlert instance when a new report is created. This will help track the number of reports for each alert.
-        serializer.save(reporter=self.request.user)
-        # get alert instance from the serializer and increment either the helpful_count or report_count based on the alert report reason. This will help track the number of reports for each alert.
-        alert = serializer.validated_data["alert"]
+        try:
+            # Bind the authenticated user as the reporter so clients
+            # cannot spoof a different reporter in the request body.
+            # TODO: Add logic to increment the report_count or helpful_count  on the associated AllyAlert instance when a new report is created. This will help track the number of reports for each alert.
+            serializer.save(reporter=self.request.user)
+            # get alert instance from the serializer and increment either the helpful_count or report_count based on the alert report reason. This will help track the number of reports for each alert.
+            alert = serializer.validated_data["alert"]
 
-        if serializer.validated_data["reason"] == AlertReport.Reason.HELPFUL:
-            alert.helpful_count.append(self.request.user.id)
-            field_to_update = "helpful_count"
-        else:
-            alert.report_count.append(self.request.user.id)
-            field_to_update = "report_count"
-        # Force Django to save the specific modified field
-        alert.save(update_fields=[field_to_update])
+            if serializer.validated_data["reason"] == AlertReport.Reason.HELPFUL:
+                alert.helpful_count.append(self.request.user.id)
+                field_to_update = "helpful_count"
+            else:
+                alert.report_count.append(self.request.user.id)
+                field_to_update = "report_count"
+            # Force Django to save the specific modified field
+            alert.save(update_fields=[field_to_update])
+        except Exception as e:
+            print(f"Error in perform_create of AlertReportListCreateView: {e}")

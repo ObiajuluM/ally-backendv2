@@ -1,4 +1,6 @@
 import uuid
+
+from geopy.geocoders import Nominatim
 from ally.models import User
 from django.contrib.gis.db import models
 from django.contrib.postgres import fields
@@ -7,7 +9,7 @@ from django.utils import timezone
 
 
 def get_default_expiration():
-    return timezone.now() + timedelta(days=5)
+    return timezone.now() + timedelta(days=3)
 
 
 class AllyAlert(models.Model):
@@ -54,19 +56,31 @@ class AllyAlert(models.Model):
         blank=True,
     )
 
+    target_location_as_string = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Full address (e.g., Lagos, Nigeria)",
+    )
+
     # How far from target_location (in km) the alert should reach.
     radius_km = models.DecimalField(
-        default=1.00,
+        default=2.00,
         max_digits=6,
         decimal_places=2,
         help_text="How far from target_location (in km) the alert should reach.",
-        null=True,
+        # null=True,
         blank=True,
     )
 
     # After this datetime the alert is considered stale and should be marked EXPIRED.
     # TODO: add time data from the front + current to set expiry date, not more than 5 days from now. If the user doesn't provide a time, default to 1 hour from now.
-    expires_at = models.DateTimeField(default=get_default_expiration)
+    expires_at = models.DateTimeField(
+        default=get_default_expiration,
+        null=True,
+        blank=True,
+        help_text="After this datetime the alert is considered stale and should be marked EXPIRED.",
+    )
 
     status = models.CharField(
         max_length=20,
@@ -99,6 +113,29 @@ class AllyAlert(models.Model):
     @property
     def target_location_latitude(self):
         return self.target_location.y if self.target_location else None
+
+    def __target_address_as_string(self):
+        """
+        Reverse-geocode the target_location to get a human-readable address string.
+        This is a helper method and should be called when needed, e.g., before saving.
+        """
+        if self.target_location:
+            try:
+                geolocator = Nominatim(user_agent="ally")
+                addr = geolocator.reverse(
+                    (self.target_location.y, self.target_location.x)
+                )
+                if addr and addr.address:
+                    self.target_location_as_string = addr.address
+            except Exception as e:
+                print(f"Error during reverse geocoding: {e}")
+
+    def save(self, *args, **kwargs):
+        # If expires_at is None or empty, assign the default expiration
+        self.__target_address_as_string()
+        if not self.expires_at:
+            self.expires_at = get_default_expiration()
+        super().save(*args, **kwargs)
 
     class Meta:
         # Composite index to speed up the common query: fetch all ACTIVE alerts
