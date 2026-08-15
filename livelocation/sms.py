@@ -53,7 +53,7 @@ def get_matching_trusted_contacts(user: User, numbers: list[str]) -> list[str]:
 
 
 def send_sms(user: User, phone_numbers: list[str]) -> bool:
-    
+
     try:
         # Generate the message text
         first_name = user.username.split()[0]
