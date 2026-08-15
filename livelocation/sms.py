@@ -26,24 +26,34 @@ def get_matching_trusted_contacts(user: User, numbers: list[str]) -> list[str]:
     trusted contacts and the provided numbers list.
     """
 
-    if not user.my_information:
-        return []
+    # if not user.my_information:
+    #     return []
 
-    trusted_contacts = user.my_information.trusted_contacts or []
+    # trusted_contacts = user.my_information.trusted_contacts or []
 
-    # Fast lookup
-    provided_numbers = set(numbers)
+    # # Fast lookup
+    # provided_numbers = set(numbers)
 
-    matches = [
-        contact["phone"]
-        for contact in trusted_contacts
-        if contact.get("phone") in provided_numbers
-    ]
+    # matches = [
+    #     contact["phone"]
+    #     for contact in trusted_contacts
+    #     if contact.get("phone") in provided_numbers
+    # ]
 
-    return matches[:5]
+    # return matches[:5]
+    return (
+        [
+            contact["phone"]
+            for contact in user.my_information.trusted_contacts
+            # if contact.get("phone") in numbers
+        ][:5]
+        if user.my_information
+        else []
+    )
 
 
 def send_sms(user: User, phone_numbers: list[str]) -> bool:
+    
     try:
         # Generate the message text
         first_name = user.username.split()[0]
@@ -58,6 +68,7 @@ def send_sms(user: User, phone_numbers: list[str]) -> bool:
                 "phoneNumbers": get_matching_trusted_contacts(user, phone_numbers),
             },
         )
+        print(f"SMS API response: {response.status_code == 202}")
         return response.status_code == 202
     except Exception as e:
         print(f"Error sending SMS: {e}")

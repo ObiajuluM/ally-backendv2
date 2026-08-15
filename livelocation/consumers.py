@@ -224,10 +224,13 @@ class LiveLocationConsumer(WebsocketConsumer):
                     if self.phones:
                         # Notify trusted contacts that a live location session has started.
                         # pass
-                        print(
-                            f"Sending SMS to {self.phones} for user {self.scope['user'].id}"
-                        )
-                        send_sms(self.db_user, self.phones)
+
+                        #  only send SMS if the user is not already streaming to avoid spamming contacts with multiple messages.
+                        if not self.db_user.is_streaming:
+                            print(
+                                f"Sending SMS to {self.phones} for user {self.scope['user'].id}"
+                            )
+                            send_sms(self.db_user, self.phones)
                         # Decline before accept() — Channels treats close-before-accept as a rejection.
                         # self.close(code=4400, reason="Missing phone numbers in query string.")
 

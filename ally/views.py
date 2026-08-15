@@ -190,8 +190,8 @@ class GeminidView(RetrieveUpdateDestroyAPIView):
     def get(self, request):
         return Response(
             {
-                "model": settings.GEMINI_MODEL,
-                "key": settings.GEMINI_API_KEY,
+                # "model": settings.GEMINI_MODEL,
+                # "key": settings.GEMINI_API_KEY,
                 "x": settings.X_URL,
                 "website": settings.WEBSITE_URL,
                 "whatsapp": settings.WHATSAPP_URL,
