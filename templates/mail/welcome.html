@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="x-apple-disable-message-reformatting">
+
+    <title>Welcome to Ally</title>
+
+    <style>
+        @import url('https://fonts.cdnfonts.com/css/maesiez');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            background-color: #f5f5f5;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+
+        img {
+            border: 0;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .email-wrapper {
+            width: 100%;
+            background-color: #f5f5f5;
+        }
+
+        .email-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        .email-body {
+            padding: 40px 48px;
+            font-family: 'Inter', Arial, sans-serif;
+            color: #333333;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .email-body p {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .greeting {
+            margin-bottom: 24px !important;
+        }
+
+        .setup-list {
+            margin: 0 0 28px 0;
+            padding: 0;
+            font-size: 16px;
+            line-height: 1.9;
+        }
+
+        .signature {
+            margin-bottom: 0 !important;
+        }
+
+        .tagline {
+            font-size: 14px;
+            color: #666666;
+            font-style: italic;
+        }
+
+        @media screen and (max-width: 600px) {
+
+            .outer-padding {
+                padding: 10px !important;
+            }
+
+            .email-body {
+                padding: 28px 20px !important;
+                font-size: 16px !important;
+                line-height: 1.7 !important;
+            }
+
+            .email-body p {
+                margin-bottom: 18px !important;
+            }
+
+            .setup-list {
+                font-size: 16px !important;
+                line-height: 1.9 !important;
+                margin-bottom: 24px !important;
+            }
+
+            .tagline {
+                font-size: 13px !important;
+            }
+        }
+
+        @media screen and (max-width: 380px) {
+
+            .outer-padding {
+                padding: 0 !important;
+            }
+
+            .email-body {
+                padding: 24px 16px !important;
+                font-size: 15px !important;
+                line-height: 1.65 !important;
+            }
+
+            .setup-list {
+                font-size: 15px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-wrapper">
+        <tr>
+            <td align="center" class="outer-padding" style="padding: 20px;">
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                    class="email-container" style="
+                    max-width: 800px;
+                    background-color: #ffffff;
+                ">
+
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="padding: 0;">
+                            <img src="https://res.cloudinary.com/vemuhoki/image/upload/v1786331525/welcomeheader.png"
+                                alt="Welcome to Ally" width="800" style="
+                                width: 100%;
+                                max-width: 800px;
+                                height: auto;
+                                display: block;
+                            ">
+                        </td>
+                    </tr>
+
+
+                    <!-- BODY -->
+                    <tr>
+                        <td class="email-body">
+
+                            <p class="greeting">
+                                Hello {{ user.username }},
+                            </p>
+
+                            <p>
+                                We built Ally because we know exactly what it feels
+                                like walking down an unfamiliar street, or the
+                                anxiety of waiting for a "got home safe" text.
+                                The world can feel uncertain, but you shouldn't
+                                have to carry that weight alone.
+                            </p>
+
+                            <p>
+                                Ally is a quiet promise that you are never walking
+                                alone, and that if you ever feel unsure, help is
+                                just one tap away. Take a deep breath. You're in
+                                safe hands now.
+                            </p>
+
+                            <p>
+                                We hope you never face an emergency, but a few
+                                minutes of setup today can make a real difference
+                                tomorrow:
+                            </p>
+
+
+                            <!-- SETUP LIST -->
+                            <p class="setup-list">
+                                ✓ Add your trusted contacts<br>
+                                ✓ Complete your medical information<br>
+                                ✓ Try sharing your live location
+                            </p>
+
+
+                            <p>
+                                Thank you for trusting us to be part of your safety
+                                journey. If you ever have any questions, or just
+                                want to say hi, simply reply to this email. We are
+                                always here and listening.
+                            </p>
+
+
+                            <!-- SIGNATURE -->
+                            <p class="signature">
+                                With warmth and care,<br><br>
+
+                                <strong>Obi from Ally</strong><br>
+
+                                <span class="tagline">
+                                    Because everyone deserves to feel safe.
+                                </span>
+                            </p>
+
+                        </td>
+                    </tr>
+
+
+                    <!-- FOOTER -->
+                    <tr>
+                        <td style="padding: 0;">
+                            <img src="https://res.cloudinary.com/vemuhoki/image/upload/v1786331524/welcomefooter.png"
+                                alt="Ally" width="800" style="
+                                width: 100%;
+                                max-width: 800px;
+                                height: auto;
+                                display: block;
+                            ">
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>

@@ -1,10 +1,29 @@
 Ally: Nigeria's emergency response layer
 languages
-color: Azure
+
+Do caching and pagination
+App -> backend versioning, so users on older versions will be told to update
+
+Emails
+SMS
 
 
-add 
-4. HTTPS / Security Headers
+
+ctrl - shift - b
+
+run docker run --rm -p 6379:6379 redis:7 to test channels
+ws://192.168.1.61:8000/ws/live/{user id}/
+
+run celery windows:
+celery -A config worker -l info -P threads
+
+run celery beats windows
+celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+
+
+#  postgresql://gis_user:gis_pass@localhost:5432/gis_db?sslmode=disable
+
 
 TODO
 https://geojson.io/next/
@@ -14,7 +33,14 @@ https://overpass-turbo.eu/?utm_source=chatgpt.com
 
 https://acleddata.com/
 
-USE: PostGIS FOR OPTIMIZATION
+
+
+look into SearchVector and SearchRank and SearchQuery, SearchHeadline for the first responders
+
+
+
+WITH AI
+1. USE: PostGIS FOR OPTIMIZATION
         Right now distance calculations happen in Python loops.
         With many responders this becomes slow.
         PostGIS would allow:
@@ -23,7 +49,7 @@ USE: PostGIS FOR OPTIMIZATION
         nearest-neighbor queries
         directly in SQL.
         Huge performance boost.
-
+2. TIMEZONE SYNC: make sure a users time zone is respected and included in the db stuff
 
 # Production mode (DEBUG=False uses Postgres)
 # Edit .env: set DEBUG=False + fill in DB_NAME/USER/PASSWORD
@@ -83,4 +109,24 @@ docker build -t <your-username>/ally-backend:latest .
 docker push <your-username>/ally-backend:latest
 
 One security note: your .env file contains real secrets (API keys, DB password,
+
+
+
+Obiajulu is sharing their live location with you.
+
+View: https://safetyally.app/l/fcca043a-fdd5-4f2c-b931-bc8d7be6a3e7
+
+If you cannot reach them, please contact local emergency services.
+
+
+Or for an emergency:
+
+🚨 Ally Emergency
+
+Obiajulu may need assistance.
+
+Last known location:
+https://ally.app/l/abc123
+
+If you cannot reach them, please contact local emergency services.
 

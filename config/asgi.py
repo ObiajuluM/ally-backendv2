@@ -9,6 +9,8 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 
 import os
 
+# from chat.AI.action import appropriate_response_from_text
+
 #
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -22,8 +24,8 @@ django_asgi_app = get_asgi_application()
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 from django.conf import settings
-from ally.middleware import JwtAuthMiddlewareStack
-from ally.routing import websocket_urlpatterns
+from livelocation.middleware import JwtAuthMiddlewareStack
+from livelocation.routing import websocket_urlpatterns
 
 # For websockets, we support both session auth and JWT-based auth so the
 # consumer can identify publishers from browser or mobile clients.
@@ -48,3 +50,6 @@ application = ProtocolTypeRouter(
         ),
     }
 )
+
+
+# print(appropriate_response_from_text("my chest is paining me"))

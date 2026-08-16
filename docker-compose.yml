@@ -35,7 +35,9 @@ services:
   # ── db ───────────────────────────────────────────────────────────────────
   # PostgreSQL database. Stores all our persistent data.
   db:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.4
+    # image: postgis/postgis:17-3.5
+    # image: postgres:16-alpine
     environment:
       # These are read from .env via the ${VAR} syntax.
       POSTGRES_DB: ${DB_NAME}
@@ -66,6 +68,42 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  # ── celery worker ─────────────────────────────────────────────────────────
+  # Runs background tasks (e.g. creating alert deliveries).
+  # It uses the same image as the web container but starts Celery instead
+  # of Daphne, so no migrations or collectstatic are needed here.
+  celery:
+    build: .
+    command: celery -A config worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+  # ── celery beat ───────────────────────────────────────────────────────────
+  # Scheduler that fires periodic tasks (e.g. expiring stale alerts).
+  # Only one beat instance should ever run — duplicate schedulers would
+  # double-fire every task.
+  celery-beat:
+    build: .
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
     restart: unless-stopped
 
 # Named volumes are managed by Docker and persist across container restarts.

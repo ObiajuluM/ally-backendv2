@@ -1,0 +1,246 @@
+import uuid
+
+from geopy.geocoders import Nominatim
+from ally.models import User
+from django.contrib.gis.db import models
+from django.contrib.postgres import fields
+from datetime import timedelta
+from django.utils import timezone
+
+
+def get_default_expiration():
+    return timezone.now() + timedelta(days=3)
+
+
+class AllyAlert(models.Model):
+    """
+    The core alert model. A user creates an alert to warn others in a geographic area
+    about something (e.g. danger, incident). The alert has a target location and a
+    radius — any user within that radius is eligible to receive it.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active"
+        EXPIRED = "expired"
+        REMOVED = "removed"
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    creator = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="ally_alerts",
+    )
+
+    title = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+
+    # The user's GPS position at the moment they created the alert.
+    created_location = models.PointField(
+        geography=True,
+        spatial_index=True,
+        null=True,
+        blank=True,
+    )
+
+    # The center point of the affected area. Users within radius_km of this point
+    # will be notified. Spatially indexed for fast proximity queries.
+    target_location = models.PointField(
+        geography=True,
+        spatial_index=True,
+        null=True,
+        blank=True,
+    )
+
+    target_location_as_string = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Full address (e.g., Lagos, Nigeria)",
+    )
+
+    # How far from target_location (in km) the alert should reach.
+    radius_km = models.DecimalField(
+        default=2.00,
+        max_digits=6,
+        decimal_places=2,
+        help_text="How far from target_location (in km) the alert should reach.",
+        # null=True,
+        blank=True,
+    )
+
+    # After this datetime the alert is considered stale and should be marked EXPIRED.
+    # TODO: add time data from the front + current to set expiry date, not more than 5 days from now. If the user doesn't provide a time, default to 1 hour from now.
+    expires_at = models.DateTimeField(
+        default=get_default_expiration,
+        null=True,
+        blank=True,
+        help_text="After this datetime the alert is considered stale and should be marked EXPIRED.",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_index=True,  # Indexed because we filter by status frequently.
+    )
+
+    # Denormalized reaction/report counts kept in sync via signals or service layer.
+    # Avoids expensive COUNT queries on hot read paths.
+    helpful_count = fields.ArrayField(models.UUIDField(), blank=True, default=list)
+    # not_helpful_count = models.PositiveIntegerField(default=0)
+    report_count = fields.ArrayField(models.UUIDField(), blank=True, default=list)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def created_location_longitude(self):
+        return self.created_location.x if self.created_location else None
+
+    @property
+    def created_location_latitude(self):
+        return self.created_location.y if self.created_location else None
+
+    @property
+    def target_location_longitude(self):
+        return self.target_location.x if self.target_location else None
+
+    @property
+    def target_location_latitude(self):
+        return self.target_location.y if self.target_location else None
+
+    def __target_address_as_string(self):
+        """
+        Reverse-geocode the target_location to get a human-readable address string.
+        This is a helper method and should be called when needed, e.g., before saving.
+        """
+        if self.target_location:
+            try:
+                geolocator = Nominatim(user_agent="ally")
+                addr = geolocator.reverse(
+                    (self.target_location.y, self.target_location.x)
+                )
+                if addr and addr.address:
+                    self.target_location_as_string = addr.address
+            except Exception as e:
+                print(f"Error during reverse geocoding: {e}")
+
+    def save(self, *args, **kwargs):
+        # If expires_at is None or empty, assign the default expiration
+        self.__target_address_as_string()
+        if not self.expires_at:
+            self.expires_at = get_default_expiration()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        # Composite index to speed up the common query: fetch all ACTIVE alerts
+        # that haven't expired yet.
+        indexes = [
+            models.Index(fields=["status", "expires_at"]),
+        ]
+
+
+class AlertDelivery(models.Model):
+    """
+    Tracks which users have been delivered a given alert, and whether they've viewed it.
+    One row per (alert, user) pair — enforced by the unique constraint below.
+    This lets us avoid sending the same alert twice and measure reach/open rates.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    alert = models.ForeignKey(
+        AllyAlert,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="received_alerts",
+    )
+
+    delivered_at = models.DateTimeField(auto_now_add=True)
+    # Null until the user opens/acknowledges the alert.
+    viewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["alert", "user"],
+                name="unique_alert_delivery",
+            )
+        ]
+
+
+class AlertReport(models.Model):
+    """
+    Allows users to flag an alert as helpful, inaccurate, spam, or otherwise problematic.
+    One report per (alert, reporter) pair — a user cannot report the same alert twice.
+    The report_count on AllyAlert should be incremented whenever a new report is saved.
+    """
+
+    class Reason(models.TextChoices):
+        HELPFUL = "helpful"
+        NOTHELPFUL = "nothelpful"
+        FALSEINFORMATION = "falseinformation"
+        SPAM = "spam"
+        WRONGLOCATION = "wronglocation"
+        OTHER = "other"
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    alert = models.ForeignKey(
+        AllyAlert,
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+
+    reporter = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="alert_reports",
+    )
+
+    reason = models.CharField(
+        max_length=30,
+        choices=Reason.choices,
+    )
+
+    # Optional free-text explanation from the reporter.
+    description = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+        constraints = [
+            # Prevent a user from reporting the same alert more than once.
+            models.UniqueConstraint(
+                fields=["alert", "reporter"],
+                name="unique_alert_report",
+            )
+        ]
+
+        indexes = [
+            models.Index(fields=["alert"]),  # Look up all reports for an alert.
+            models.Index(fields=["reporter"]),  # Look up all reports by a user.
+        ]
+
+    def __str__(self):
+        return f"{self.reporter} reported {self.alert_id}"

@@ -4,4 +4,6 @@
             "text": "Generate a clear, procedural and detailed set of commit messages that states all the changes made in the code with notations in hyphens."
         },
     ],
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
 }

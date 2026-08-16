@@ -12,6 +12,10 @@
 .git
 .gitignore
 
+# Firebase service account key file — it's injected at runtime via env_file.
+config/firebase-service-account.json
+
+
 # Python cache files — Docker will regenerate them inside the container.
 __pycache__
 *.pyc

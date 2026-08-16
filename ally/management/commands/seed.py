@@ -1,228 +1,288 @@
-import json
-import math
-import os
 import random
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
 
+from django.contrib.gis.geos import Point, Polygon
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from faker import Faker
 
-from ally.models import (
-    Address,
+from ally.models import Address, MyInformation, User
+from allyalert.models import AlertDelivery, AlertReport, AllyAlert
+from firstresponder.models import (
     FirstResponder,
-    FirstResponderTag,
     FirstResponderType,
-    MyInformation,
     OrganizationType,
-    User,
+    FirstResponderTag,
 )
+from servicearea.models import ServiceArea
+
+# from faker.config import AVAILABLE_LOCALES
+
+# # This prints every valid string you can pass to Faker()
+# print(AVAILABLE_LOCALES)
 
 
 class Command(BaseCommand):
-    help = "Populate the database with fake users, personal information, and first responders."
+    help = "Seeds the database with test data centered around Port Harcourt, Nigeria using Faker."
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--users",
-            type=int,
-            default=10,
-            help="Number of fake users to create.",
-        )
-        parser.add_argument(
-            "--responders",
+            "--count",
             type=int,
             default=100,
-            help="Number of fake first responders to create.",
-        )
-        parser.add_argument(
-            "--cluster-lat",
-            type=float,
-            default=None,
-            help="Base latitude for the first-responder cluster (random if omitted).",
-        )
-        parser.add_argument(
-            "--cluster-lng",
-            type=float,
-            default=None,
-            help="Base longitude for the first-responder cluster (random if omitted).",
-        )
-        parser.add_argument(
-            "--seed",
-            type=int,
-            default=None,
-            help="Optional random seed for repeatable fake data.",
+            help="Number of records to generate for each entity type (default: 100).",
         )
 
     def handle(self, *args, **options):
-        fake = Faker()
-        seed = options["seed"]
-        if seed is not None:
-            Faker.seed(seed)
-            random.seed(seed)
+        count = options["count"]
+        fake = Faker(["en_NG"])
+        # fake = Faker(["en_NG", "en_US"])
 
-        users_count = max(options["users"], 0)
-        responders_count = max(options["responders"], 0)
+        # self.stdout.write(self.style.WARNING("Clearing existing data..."))
+        # AlertReport.objects.all().delete()
+        # AlertDelivery.objects.all().delete()
+        # AllyAlert.objects.all().delete()
+        # FirstResponder.objects.all().delete()
+        # ServiceArea.objects.all().delete()
+        # User.objects.all().delete()
+        # MyInformation.objects.all().delete()
+        # Address.objects.all().delete()
 
-        created_users = 0
-        created_responders = 0
-
-        for _ in range(users_count):
-            self.create_user(fake)
-            created_users += 1
-
-        # Determine the cluster centre for first responders.
-        base_lat = (
-            options["cluster_lat"]
-            if options["cluster_lat"] is not None
-            else round(random.uniform(-70, 70), 6)
-        )
-        base_lng = (
-            options["cluster_lng"]
-            if options["cluster_lng"] is not None
-            else round(random.uniform(-170, 170), 6)
+        # self.stdout.write(self.style.SUCCESS("Database cleared."))
+        self.stdout.write(
+            self.style.NOTICE(
+                f"Starting seed process for {count} items per entity type..."
+            )
         )
 
-        for _ in range(responders_count):
-            self.create_first_responder(fake, base_lat, base_lng)
-            created_responders += 1
+        # ------------------------------------------------------------------
+        # MOCK GEOLOCATOR
+        # Mock Nominatim so save() methods don't make hundreds of HTTP requests
+        # ------------------------------------------------------------------
+        mock_address_obj = MagicMock()
+        mock_address_obj.address = (
+            f"{fake.street_name()}, Port Harcourt, Rivers State, Nigeria"
+        )
+
+        with patch("geopy.geocoders.Nominatim.reverse", return_value=mock_address_obj):
+
+            # ---------------------------------------------------------
+            # 1. CREATE SERVICE AREAS
+            # ---------------------------------------------------------
+            service_areas = []
+            for i in range(count):
+                # Center around Port Harcourt (Lon: ~6.92-7.12, Lat: ~4.72-4.92)
+                base_lon = round(random.uniform(6.9200, 7.1000), 4)
+                base_lat = round(random.uniform(4.7200, 4.9000), 4)
+                offset = 0.02
+
+                poly = Polygon(
+                    (
+                        (base_lon, base_lat),
+                        (base_lon + offset, base_lat),
+                        (base_lon + offset, base_lat + offset),
+                        (base_lon, base_lat + offset),
+                        (base_lon, base_lat),  # Close polygon
+                    ),
+                    srid=4326,
+                )
+
+                sa = ServiceArea.objects.create(
+                    name=f"{fake.city_suffix()} Zone {i + 1} - {fake.street_name()}",
+                    polygon=poly,
+                )
+                service_areas.append(sa)
+
+            self.stdout.write(
+                self.style.SUCCESS(f"Created {len(service_areas)} Service Areas.")
+            )
+
+            # ---------------------------------------------------------
+            # 2. CREATE USERS & PROFILES
+            # ---------------------------------------------------------
+            users = []
+            for _ in range(count):
+                lon = round(random.uniform(6.9200, 7.1200), 6)
+                lat = round(random.uniform(4.7200, 4.9200), 6)
+
+                addr = Address(location=Point(lon, lat, srid=4326))
+                addr.save()
+
+                profile = MyInformation.objects.create(
+                    name=fake.name(),
+                    birthday=fake.date_of_birth(minimum_age=18, maximum_age=65),
+                    address=addr,
+                    gender=random.choice(["Male", "Female"]),
+                    weight=random.uniform(50.0, 100.0),
+                    height=random.uniform(150.0, 195.0),
+                    allergies=random.sample(
+                        ["Penicillin", "Peanuts", "Dust", "Latex"],
+                        k=random.randint(0, 2),
+                    ),
+                    medications=random.sample(
+                        ["Paracetamol", "Asthma Inhaler", "Vitamin C"],
+                        k=random.randint(0, 1),
+                    ),
+                    trusted_contacts=[
+                        {"name": fake.name(), "phone": fake.phone_number()}
+                        for _ in range(random.randint(1, 3))
+                    ],
+                )
+
+                username = fake.unique.user_name()
+                user = User.objects.create_user(
+                    email=f"{username}_{random.randint(100, 999)}@{fake.free_email_domain()}",
+                    username=username,
+                    password="password123",
+                    phone=fake.unique.msisdn()[:15],
+                    my_information=profile,
+                    location=Point(lon, lat, srid=4326),
+                )
+                users.append(user)
+
+            self.stdout.write(
+                self.style.SUCCESS(f"Created {len(users)} Users & Profiles.")
+            )
+
+            # ---------------------------------------------------------
+            # 3. CREATE FIRST RESPONDERS
+            # ---------------------------------------------------------
+            first_responders = []
+            responder_types = [choice[0] for choice in FirstResponderType.choices]
+            org_types = [choice[0] for choice in OrganizationType.choices]
+            tag_choices = [choice[0] for choice in FirstResponderTag.choices]
+
+            for _ in range(count):
+                lon = round(random.uniform(6.9200, 7.1200), 6)
+                lat = round(random.uniform(4.7200, 4.9200), 6)
+
+                addr = Address(location=Point(lon, lat, srid=4326))
+                addr.save()
+
+                fr = FirstResponder.objects.create(
+                    name=f"{fake.company()} Emergency Response",
+                    firstresponder_type=random.choice(responder_types),
+                    organization_type=random.choice(org_types),
+                    description=fake.catch_phrase(),
+                    address=addr,
+                    phones=[fake.phone_number(), fake.phone_number()],
+                    availability=random.choice(["24/7", "8am - 5pm", "Mon-Fri"]),
+                    response_time=f"{random.randint(3, 20)} mins",
+                    tags=random.sample(tag_choices, k=random.randint(1, 4)),
+                )
+                # Assign to 1-3 random service areas
+                fr.service_areas.set(
+                    random.sample(service_areas, k=random.randint(1, min(3, count)))
+                )
+                first_responders.append(fr)
+
+            self.stdout.write(
+                self.style.SUCCESS(f"Created {len(first_responders)} First Responders.")
+            )
+
+            # ---------------------------------------------------------
+            # 4. CREATE ALERTS
+            # ---------------------------------------------------------
+            alerts = []
+            alert_titles = [
+                "Armed Robbery Reported",
+                "Severe Road Accident",
+                "Flash Flood Hazard",
+                "Fire Outbreak in Commercial Building",
+                "Suspicious Group Gathered",
+                "Pipeline Vandalism Incident",
+                "Gridlock / Traffic Blockade",
+            ]
+
+            status_choices = [
+                AllyAlert.Status.ACTIVE,
+                AllyAlert.Status.EXPIRED,
+                AllyAlert.Status.REMOVED,
+            ]
+
+            for _ in range(count):
+                creator = random.choice(users)
+                c_lon = round(random.uniform(6.9200, 7.1200), 6)
+                c_lat = round(random.uniform(4.7200, 4.9200), 6)
+                t_lon = c_lon + random.uniform(-0.005, 0.005)
+                t_lat = c_lat + random.uniform(-0.005, 0.005)
+
+                alert = AllyAlert(
+                    creator=creator,
+                    title=f"{random.choice(alert_titles)} near {fake.street_name()}",
+                    description=fake.paragraph(nb_sentences=3),
+                    created_location=Point(c_lon, c_lat, srid=4326),
+                    target_location=Point(t_lon, t_lat, srid=4326),
+                    radius_km=round(random.uniform(0.5, 5.0), 2),
+                    status=random.choice(status_choices),
+                    expires_at=timezone.now() + timedelta(hours=random.randint(1, 72)),
+                )
+                alert.save()
+                alerts.append(alert)
+
+            self.stdout.write(self.style.SUCCESS(f"Created {len(alerts)} Ally Alerts."))
+
+            # ---------------------------------------------------------
+            # 5. CREATE DELIVERIES & REPORTS
+            # ---------------------------------------------------------
+            deliveries_count = 0
+            delivery_pairs = set()
+
+            for _ in range(count):
+                alert = random.choice(alerts)
+                user = random.choice(users)
+                pair = (alert.id, user.id)
+
+                if pair not in delivery_pairs:
+                    delivery_pairs.add(pair)
+                    AlertDelivery.objects.create(
+                        alert=alert,
+                        user=user,
+                        viewed_at=(
+                            timezone.now() if random.choice([True, False]) else None
+                        ),
+                    )
+                    deliveries_count += 1
+
+            reports_count = 0
+            report_pairs = set()
+            reason_choices = [choice[0] for choice in AlertReport.Reason.choices]
+
+            for _ in range(count):
+                alert = random.choice(alerts)
+                reporter = random.choice(users)
+                pair = (alert.id, reporter.id)
+
+                if pair not in report_pairs:
+                    report_pairs.add(pair)
+                    reason = random.choice(reason_choices)
+
+                    AlertReport.objects.create(
+                        alert=alert,
+                        reporter=reporter,
+                        reason=reason,
+                        description=fake.sentence(),
+                    )
+
+                    # Update alert helpful/report arrays
+                    if reason == AlertReport.Reason.HELPFUL:
+                        alert.helpful_count.append(reporter.id)
+                        alert.save(update_fields=["helpful_count"])
+                    else:
+                        alert.report_count.append(reporter.id)
+                        alert.save(update_fields=["report_count"])
+
+                    reports_count += 1
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Created {deliveries_count} Deliveries and {reports_count} Reports."
+                )
+            )
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Created {created_users} users and {created_responders} first responders."
+                f"Done! Database successfully seeded with {count} items per entity type."
             )
         )
-
-    def create_address(self, fake):
-        return Address.objects.create(
-            latitude=round(random.uniform(-90, 90), 6),
-            longitude=round(random.uniform(-180, 180), 6),
-            full_address=fake.address().replace("\n", ", "),
-        )
-
-    def create_clustered_address(self, fake, base_lat, base_lng, radius_miles=5):
-        """Return an Address within *radius_miles* of (base_lat, base_lng)."""
-        # Uniform random point inside a circle: scale by sqrt for uniform area distribution.
-        angle = random.uniform(0, 2 * math.pi)
-        distance = radius_miles * math.sqrt(random.random())  # miles
-        # 1 degree latitude ≈ 69 miles; longitude degree shrinks with cos(lat).
-        delta_lat = (distance / 69.0) * math.sin(angle)
-        delta_lng = (distance / (69.0 * math.cos(math.radians(base_lat)))) * math.cos(
-            angle
-        )
-        lat = round(max(-90.0, min(90.0, base_lat + delta_lat)), 6)
-        lng = round(max(-180.0, min(180.0, base_lng + delta_lng)), 6)
-        return Address.objects.create(
-            latitude=lat,
-            longitude=lng,
-            full_address=fake.address().replace("\n", ", "),
-        )
-
-    def create_my_information(self, fake):
-        trusted_contacts = [
-            self.make_trusted_contact(fake) for _ in range(random.randint(1, 3))
-        ]
-        is_pregnant = random.choice([True, False])
-
-        return MyInformation.objects.create(
-            name=fake.name(),
-            birthday=fake.date_of_birth(minimum_age=18, maximum_age=80),
-            address=self.create_address(fake),
-            gender=random.choice(["male", "female", "non-binary", "prefer not to say"]),
-            weight=round(random.uniform(45, 120), 1),
-            height=round(random.uniform(145, 205), 1),
-            allergies=random.sample(
-                ["Peanuts", "Dust", "Penicillin", "Seafood", "None"],
-                k=random.randint(1, 3),
-            ),
-            medications=random.sample(
-                ["Ibuprofen", "Insulin", "Ventolin", "Paracetamol", "None"],
-                k=random.randint(1, 3),
-            ),
-            medical_notes=fake.sentence(nb_words=12),
-            organ_donor=random.choice([True, False]),
-            is_pregnant=is_pregnant,
-            due_date=(
-                fake.date_between(start_date="today", end_date="+280d")
-                if is_pregnant
-                else None
-            ),
-            trusted_contacts=trusted_contacts,
-        )
-
-    def create_user(self, fake):
-        my_information = self.create_my_information(fake)
-        email = self.unique_email(fake)
-
-        return User.objects.create_user(
-            email=email,
-            username=fake.user_name(),
-            phone=self.unique_phone(fake),
-            password="password123",
-            my_information=my_information,
-        )
-
-    def create_first_responder(self, fake, base_lat=0.0, base_lng=0.0):
-        responder_type = random.choice(FirstResponderType.values)
-        org_type = random.choice(OrganizationType.values)
-        tag_count = random.randint(1, 4)
-
-        # ~40 % of responders get explicit service-area polygons;
-        # the rest rely on the default 200 km radius fallback.
-        service_areas = self.make_service_areas(base_lat, base_lng)
-
-        return FirstResponder.objects.create(
-            name=f"{fake.company()} Response Unit",
-            firstresponder_type=responder_type,
-            organization_type=org_type,
-            description=fake.text(max_nb_chars=180),
-            phones=[self.unique_phone(fake) for _ in range(random.randint(1, 3))],
-            availability=random.choice(["24/7", "Business hours", "Weekends only"]),
-            socials={
-                "facebook": fake.url(),
-                "x": fake.url(),
-                "website": fake.url(),
-            },
-            response_time=random.choice(["5 mins", "10 mins", "15 mins", "30 mins"]),
-            address=self.create_clustered_address(fake, 4.8948794, 6.9719772),
-            tags=random.sample(list(FirstResponderTag.values), k=tag_count),
-            metadata={
-                "service_area": fake.city(),
-                "verified": random.choice([True, False]),
-            },
-            service_areas=service_areas,
-        )
-
-    def make_service_areas(self, base_lat, base_lng):
-        """Return the Rivers State boundary polygon as the service area.
-
-        Coordinates are loaded directly from Rivers State.json in GeoJSON
-        format ([lng, lat] pairs) and stored as-is — no conversion needed.
-        """
-        json_path = os.path.normpath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "..", "..", "Rivers State.json"
-            )
-        )
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # GeoJSON Polygon: coordinates[0] is the outer ring, already [lng, lat].
-        polygon = data["features"][0]["geometry"]["coordinates"][0]
-        return [polygon]
-
-    def make_trusted_contact(self, fake):
-        return {
-            "name": fake.name(),
-            "phone": self.unique_phone(fake),
-        }
-
-    def unique_email(self, fake):
-        while True:
-            email = fake.unique.email()
-            if not User.objects.filter(email=email).exists():
-                return email
-
-    def unique_phone(self, fake):
-        while True:
-            phone = f"+234{random.randint(7000000000, 9099999999)}"
-            if not User.objects.filter(phone=phone).exists():
-                return phone

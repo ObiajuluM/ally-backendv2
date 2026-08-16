@@ -55,6 +55,10 @@ db.sqlite3
 # Windows
 Thumbs.db
 
+# Firebase service account key file
+config/firebase-service-account.json
+
+
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,django,venv
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,django,venv

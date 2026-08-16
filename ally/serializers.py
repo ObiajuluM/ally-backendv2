@@ -1,6 +1,7 @@
 from rest_framework import serializers
+from django.contrib.gis.geos import Point
 
-from .models import Address, FirstResponder, FirstResponderTag, MyInformation, User
+from .models import Address, MyInformation, User
 
 
 def address_has_content(address_data):
@@ -17,84 +18,71 @@ def address_has_content(address_data):
 
 
 class AddressSerializer(serializers.ModelSerializer):
+    # Explicit fields that accept input data and render output data
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
+
     class Meta:
         model = Address
-        fields = ["latitude", "longitude", "full_address"]
-        # read_only_fields = ["id"]
+        fields = ["longitude", "latitude", "as_string"]
+        # as_string is handled automatically by your model's save() geocoder
+        read_only_fields = ["as_string"]
+
+    def to_representation(self, instance):
+        """Controls what data is sent OUT to the API client."""
+        representation = super().to_representation(instance)
+        representation["latitude"] = instance.latitude
+        representation["longitude"] = instance.longitude
+        return representation
+
+    def validate(self, attrs):
+        """Validates coordinates and packages them into a Point object."""
+        lat = attrs.pop("latitude", None)
+        lon = attrs.pop("longitude", None)
+
+        # Ensure both coordinates are present if one is provided
+        if (lat is not None and lon is None) or (lon is not None and lat is None):
+            raise serializers.ValidationError(
+                "Both latitude and longitude must be provided together."
+            )
+
+        # Package coordinates into GeoDjango Point (X/Longitude first, Y/Latitude second)
+        if lat is not None and lon is not None:
+            attrs["location"] = Point(lon, lat)
+        else:
+            attrs["location"] = None
+
+        return attrs
 
 
-class FirstResponderSerializer(serializers.ModelSerializer):
-    address = AddressSerializer(required=False, allow_null=True)
-    phones = serializers.ListField(
-        child=serializers.CharField(),
-        required=False,
-        allow_null=True,
-    )
-    socials = serializers.DictField(required=False, allow_null=True)
-    tags = serializers.ListField(
-        child=serializers.ChoiceField(choices=FirstResponderTag.choices),
-        required=False,
-        allow_null=True,
-    )
-    metadata = serializers.DictField(required=False, allow_null=True)
-    # List of polygons; each polygon is a list of [lat, lng] two-element lists.
-    service_areas = serializers.ListField(
-        child=serializers.ListField(
-            child=serializers.ListField(
-                child=serializers.FloatField(), min_length=2, max_length=2
-            ),
-            min_length=3,
-        ),
-        required=False,
-        allow_null=True,
-    )
+# class AddressSerializer(serializers.ModelSerializer):
+#     # Read-only fields for API outputs
+#     longitude = serializers.ReadOnlyField()
+#     latitude = serializers.ReadOnlyField()
 
-    class Meta:
-        model = FirstResponder
-        fields = [
-            "id",
-            "name",
-            "firstresponder_type",
-            "organization_type",
-            "description",
-            "phones",
-            "availability",
-            "socials",
-            "response_time",
-            "address",
-            "tags",
-            "metadata",
-            "service_areas",
-        ]
-        read_only_fields = ["id"]
+#     class Meta:
+#         model = Address
+#         fields = ["longitude", "latitude", "as_string"]
+# read_only_fields = ["id"]
 
-    def create(self, validated_data):
-        address_data = validated_data.pop("address", None)
 
-        address = None
-        if address_data and address_has_content(address_data):
-            address = Address.objects.create(**address_data)
+# FOR Address Serializer
+# from rest_framework import serializers
 
-        return FirstResponder.objects.create(address=address, **validated_data)
+# class LocationSerializer(serializers.ModelSerializer):
+#     latitude = serializers.ReadOnlyField(source='point.y')
+#     longitude = serializers.ReadOnlyField(source='point.x')
 
-    def update(self, instance, validated_data):
-        address_data = validated_data.pop("address", serializers.empty)
+#     class Meta:
+#         model = Location
+#         fields = ['id', 'name', 'latitude', 'longitude']
 
-        if address_data is not serializers.empty:
-            if address_data is None:
-                instance.address = None
-            elif instance.address:
-                for key, value in address_data.items():
-                    setattr(instance.address, key, value)
-                instance.address.save()
-            elif address_has_content(address_data):
-                instance.address = Address.objects.create(**address_data)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-        return instance
+# class AddressSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Address
+#         fields = ["latitude", "longitude", "full_address"]
+#         # read_only_fields = ["id"]
 
 
 class MyInformationSerializer(serializers.ModelSerializer):
@@ -184,13 +172,10 @@ class MyInformationSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    #     my_information = serializers.HyperlinkedRelatedField(
-    #     view_name="myinformation-detail",
-    #     queryset=MyInformation.objects.all(),
-    #     required=False,
-    #     allow_null=True,
-    # )
     my_information = MyInformationSerializer(required=False, allow_null=True)
+
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -200,5 +185,33 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "username",
             "my_information",
+            "latitude",
+            "longitude",
+            "is_streaming",
         ]
         read_only_fields = ["id"]
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["latitude"] = instance.location.y if instance.location else None
+        rep["longitude"] = instance.location.x if instance.location else None
+        return rep
+
+    def update(self, instance, validated_data):
+        lat = validated_data.pop("latitude", None)
+        lon = validated_data.pop("longitude", None)
+
+        if lat is not None and lon is not None:
+            instance.location = Point(lon, lat)
+        elif lat is None and lon is None:
+            pass  # no location keys sent — leave existing value untouched
+        else:
+            raise serializers.ValidationError(
+                "Both latitude and longitude must be provided together."
+            )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance

@@ -1,9 +1,10 @@
-from django.urls import path
+from django.urls import include, path
 from ally.views import (
-    FirstResponderListCreateView,
     GeminidView,
     GoogleAuthView,
     MyInformationRetrieveUpdateDestroyView,
+    RegisterFCMTokenView,
+    UserListCreateView,
     UserRetrieveUpdateDestroyView,
 )
 
@@ -26,7 +27,7 @@ urlpatterns = [
     #
     # # User endpoints
     # path(
-    #     "user/",
+    #     "users/",
     #     UserListCreateView.as_view(),
     #     name="user-list-create",
     # ),
@@ -35,19 +36,14 @@ urlpatterns = [
         UserRetrieveUpdateDestroyView.as_view(),
         name="user-retrieve-update-destroy",
     ),
-    #
-    # first responder endpoints
-    path(
-        "first-responders/",
-        FirstResponderListCreateView.as_view(),
-        name="firstresponder-list-create",
-    ),
-    # path(
-    #     "first-responders/<uuid:pk>/",
-    #     FirstResponderRetrieveUpdateDestroyView.as_view(),
-    #     name="firstresponder-retrieve-update-destroy",
-    # ),
-    #
+    # FCM
+    # "register-fcm"
+    path("fcm/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
     # Gemini
     path("geminid/", GeminidView.as_view(), name="geminid"),
+    #
+    path("first-responder/", include("firstresponder.urls")),
+    path("ally-alert/", include("allyalert.urls")),
+    path("live-location/", include("livelocation.urls")),
+    path("chat/", include("chat.urls")),
 ]

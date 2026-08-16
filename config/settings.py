@@ -11,8 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from datetime import timedelta
+import json
 from pathlib import Path
 import os
+import firebase_admin
+from firebase_admin import credentials
+from celery.schedules import crontab
 
 # import environ
 import environ
@@ -44,6 +48,7 @@ ALLOWED_HOSTS = (
         "10.216.153.102",
         "localhost",
         "0.0.0.0",
+        "127.0.0.1",
     ]
     if DEBUG
     else env.list("ALLOWED_HOSTS", default=[])
@@ -61,15 +66,29 @@ CORS_ALLOWED_ORIGINS = (
 
 # Application definition
 INSTALLED_APPS = [
+    # for celery results backend
+    "django_celery_beat",
+    "django_celery_results",
     #
     "corsheaders",  # for cors headers
     "jazzmin",  # for admin UI, optional
-    "daphne",
+    "daphne",  # websocket stuff
+    # all apps
     "ally.apps.AllyConfig",
+    "firstresponder.apps.FirstresponderConfig",
+    "livelocation.apps.LivelocationConfig",
     "waitlist.apps.WaitlistConfig",
-    "rest_framework",
-    "rest_framework_simplejwt",
+    "allyalert.apps.AllyalertConfig",
+    "chat.apps.ChatConfig",
+    "areaadvisor.apps.AreaadvisorConfig",
+    "servicearea.apps.ServiceareaConfig",
     #
+    "rest_framework",
+    "rest_framework_gis",
+    "rest_framework_simplejwt",
+    # for GIS
+    "django.contrib.gis",
+    # default django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -118,18 +137,29 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = (
+    # {
+    #     # for testing
+    #     "default": {
+    #         "ENGINE": "django.db.backends.sqlite3",
+    #         "NAME": BASE_DIR / "db.sqlite3",
+    #     }
+    # }
     {
-        # for testing
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "ENGINE": "django.contrib.gis.db.backends.postgis",  # GeoDjango backend
+            "NAME": "gis_db",
+            "USER": "gis_user",
+            "PASSWORD": "gis_pass",
+            "HOST": "127.0.0.1",  # Connect via your local host
+            "PORT": "5432",
         }
     }
     if DEBUG
     else {
         # for production
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            # "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
             "NAME": env("DB_NAME"),
             "USER": env("DB_USER"),
             "PASSWORD": env("DB_PASSWORD"),
@@ -191,7 +221,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        # Custom JWT auth that checks user.is_active (blocked status)
+        "ally.authmiddleware.AllyJWTAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # Allows you to use the standard DRF UI Log In button
+        "rest_framework.authentication.SessionAuthentication",
     ),
     # ... other DRF settings
 }
@@ -204,13 +238,17 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = "ally.User"
 
+
+# MARK: OAUTH Configuration
+# Google OAuth2 settings
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
 
-# gemini api key for flutter
+# MARK: Gemini Configuration
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
-
-# gemini model to use, e.g. "gemini-2.5-flash-lite"
-GEMINI_MODEL = env("GEMINI_MODEL", default="")
+#
+GEMINI_MODEL_ = env("GEMINI_MODEL", default="gemini-2.5-flash-lite")
+#
+GEMINI_CHAT_MODEL = env("GEMINI_CHAT_MODEL", default="gemini-2.5-flash-lite")
 
 # social / contact links
 X_URL = env("X_URL")
@@ -228,13 +266,111 @@ CHANNEL_LAYERS = {
         "CONFIG": {
             "hosts": [
                 (
-                    env("REDIS_HOST", default="127.0.0.1"),
+                    "127.0.0.1" if DEBUG else env("REDIS_HOST", default="127.0.0.1"),
                     env.int("REDIS_PORT", default=6379),
                 )
             ],
         },
     },
 }
+
+
+# MARK: Celery configuration
+# TODO: region -- -- endregion
+# --- Celery Configuration ---
+CELERY_BROKER_URL = f"redis://{"127.0.0.1" if DEBUG else env("REDIS_HOST", default="127.0.0.1")}:{env.int('REDIS_PORT', default=6379)}/1"
+
+# Database result backend configuration (requires django-celery-results)
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = (
+    True  # Highly recommended: logs task arguments and execution graphs
+)
+
+# Security & Serialization
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+
+# Reliability
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TIMEZONE = TIME_ZONE  # Synchronizes Celery with your Django project timezone
+
+# CELERY BEAT  — periodic task schedule
+CELERY_BEAT_SCHEDULE = {
+    # Check for expired alerts every 5 minutes.
+    # Keeps the public list view from showing stale alerts.
+    "expire-stale-alerts": {
+        "task": "allyalert.tasks.expire_stale_alerts",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Close orphaned live-location sessions once a day at 12:30 AM.
+    "cleanup-orphaned-live-sessions": {
+        "task": "livelocation.tasks.cleanup_orphaned_live_sessions",
+        "schedule": crontab(hour=0, minute=30),
+    },
+    # syste level shit
+    # Delete celery task result rows older than 30 days, once a day at 3 AM.
+    # Prevents the TaskResult table from growing unboundedly.
+    "cleanup-celery-results": {
+        "task": "config.tasks.cleanup_celery_results",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
+
+# Force Celery to always use the database scheduler by default
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+# Unchecked records sit in your database forever, degrading query speeds.
+# This sets task historical data to auto-expire after 7 days.
+# CELERY_RESULT_EXPIRES = 60 * 60 * 24 * 7
+
+
+# MARK: Email Configuration
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env("EMAIL_USE_SSL", default=False)
+
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+SERVER_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+
+# MARK: SMS Configuration
+SMS_USERNAME = env("SMS_USERNAME", default="")
+SMS_PASSWORD = env("SMS_PASSWORD", default="")
+
+# MARK: FCM configuration
+# Path to your firebase service account JSON file
+
+# 1. Try loading from Environment Variable (Linux / Production)
+FIREBASE_CREDENTIALS = os.environ.get("FIREBASE_CREDENTIALS")
+
+# Initialize Firebase Admin SDK
+if FIREBASE_CREDENTIALS:
+    # Parse the stringified JSON from the environment variable
+    cred_dict = json.loads(
+        FIREBASE_CREDENTIALS.replace("\r", "").replace("\n", "").replace("'", '"')
+    )
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred)
+else:
+    # 2. Fallback to Local File (Windows / Development)
+    CREDENTIAL_PATH = os.path.join(
+        os.path.dirname(__file__), "firebase-service-account.json"
+    )
+    if os.path.exists(CREDENTIAL_PATH):
+        cred = credentials.Certificate(CREDENTIAL_PATH)
+        firebase_admin.initialize_app(cred)
+    else:
+        raise FileNotFoundError("Firebase credentials not found in env or local file.")
+
+
+# TODO: Implement: throttling, caching, pagination
+
 
 # Stop words
 STOP_WORDS = set(env.list("STOP_WORDS", default=[]))
@@ -265,10 +401,25 @@ JAZZMIN_SETTINGS = (
         "icons": {
             "auth": "fas fa-users-cog",
             "auth.Group": "fas fa-layer-group",
+            #
             "ally.User": "fas fa-user",
             "ally.MyInformation": "fas fa-id-card",
-            "ally.FirstResponder": "fas fa-ambulance",
             "ally.Address": "fas fa-map-marker-alt",
+            #
+            "firstresponder.FirstResponder": "fas fa-ambulance",
+            "servicearea.ServiceArea": "fas fa-globe",
+            #
+            "waitlist.WaitlistEntry": "fas fa-hourglass-half",
+            #
+            "livelocation.LiveLocationSession": "fas fa-broadcast-tower",
+            "livelocation.SessionParticipant": "fas fa-street-view",
+            #
+            "allyalert.AllyAlert": "fas fa-exclamation-triangle",
+            "allyalert.AlertReport": "fas fa-file-invoice",
+            "allyalert.AlertDelivery": "fas fa-bell",  # Notification/delivery icon
+            #
+            "chat.Chat": "fas fa-envelope",
+            "chat.Message": "fas fa-comments",
         },
         "default_icon_parents": "fas fa-chevron-circle-right",
         "default_icon_children": "fas fa-circle",
@@ -287,3 +438,14 @@ JAZZMIN_UI_TWEAKS = (
         "sidebar": "sidebar-dark-primary",
     }
 )
+
+#  FOR POST GIS, GDAL --  if running on windowss
+if os.name == "nt":
+    # Point Django directly to the main GDAL DLL file
+    GDAL_LIBRARY_PATH = r"C:\Program Files\GDAL\gdal.dll"
+
+    # Point Django directly to the GEOS C-API DLL file
+    GEOS_LIBRARY_PATH = r"C:\Program Files\GDAL\geos_c.dll"
+
+    # Optional: Set the PROJ data directory if you hit coordinate transformation errors later
+    os.environ["PROJ_LIB"] = r"C:\Program Files\GDAL\projlib"
