@@ -41,7 +41,7 @@ djangorestframework==3.16.0
 djangorestframework-gis==1.2.1
 djangorestframework_simplejwt==5.5.1
 docstring_parser==0.18.0
-Faker==37.4.0
+Faker==40.36.0
 firebase_admin==7.5.0
 frozenlist==1.8.0
 geographiclib==2.1
