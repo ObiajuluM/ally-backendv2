@@ -47,6 +47,7 @@ application = ProtocolTypeRouter(
             websocket_application
             if settings.DEBUG
             else AllowedHostsOriginValidator(websocket_application)
+            # #REMEMBER: remove if you are running Flutter on Android, iOS, or Desktop, native sockets (dart:io) do not send an Origin header by default, unlike a web browser. Because AllowedHostsOriginValidator in Django Channels expects a valid Origin header, it will reject the connection if no Origin header is present at all.
         ),
     }
 )
