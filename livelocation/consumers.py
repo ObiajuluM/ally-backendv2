@@ -46,6 +46,18 @@ class LiveLocationConsumer(WebsocketConsumer):
         # Cache the publish permission once on connect so receive() can make a quick decision for every incoming socket message.
         self.can_publish = self.user_can_publish()
 
+        # ---------------- headers ---------------------
+        # Convert headers list of tuples [(b'header', b'value')] into a dict
+        headers = dict(self.scope.get("headers", []))
+
+        # Get the Origin header (it is in bytes, so decode it)
+        origin = headers.get(b"origin", b"NO ORIGIN HEADER SENT").decode("utf-8")
+
+        print("=" * 40)
+        print(f"RECEIVED ORIGIN: {origin}")
+        print("=" * 40)
+        # -----------`` -----------------
+
         # Every socket in the same room joins the same channel-layer group, which
         # lets one published update fan out to every connected viewer.
         self.room_group_name = f"live_{self.room_name}"
@@ -239,6 +251,7 @@ class LiveLocationConsumer(WebsocketConsumer):
                     room_name=self.room_name,
                     metadata=self.scope.__str__(),
                 )
+
                 # then change their is streaming status to true
                 self.db_user.is_streaming = True
                 self.db_user.save(
@@ -249,46 +262,105 @@ class LiveLocationConsumer(WebsocketConsumer):
                     f"Error creating LiveLocationSession: {e}: This is most likely because the session already exists. The publisher should not connect twice."
                 )
         else:
-            # if this is a viewer, we can log that they connected.
+            # if this is a viewer, log that they connected.
             try:
+
+                # session = LiveLocationSession.objects.get(room_name=self.room_name)
+
                 self.active_participant = SessionParticipant.objects.create(
-                    session=LiveLocationSession.objects.get(id=self.active_session.id),
+                    # Look up the session by room_name and sort to the latest, not by self.active_session because the server has no way of knowing the self.active_session of a viewer.
+                    session=LiveLocationSession.objects.filter(room_name=self.room_name)
+                    .order_by("-started_at")
+                    .first(),
                     user=self.db_user,
                     ip=self.get_real_ip(self.scope),
                     metadata=self.serialize_scope(dict(self.scope)),
                 )
-            except Exception as e:
+            except LiveLocationSession.DoesNotExist:
                 print(
-                    f"Error creating SessionParticipant: {e}: This is most likely because the session does not exist yet. The publisher should connect first."
+                    f"Session {self.room_name} does not exist yet. The publisher should connect first."
                 )
+                # Optional: self.close(code=4004) # Close the socket if the room doesn't exist
+            except Exception as e:
+                print(f"Error creating SessionParticipant: {e}")
+            # # if this is a viewer, we can log that they connected.
+            # try:
+            #     self.active_participant = SessionParticipant.objects.create(
+            #         session=LiveLocationSession.objects.get(id=self.active_session.id),
+            #         user=self.db_user,
+            #         ip=self.get_real_ip(self.scope),
+            #         metadata=self.serialize_scope(dict(self.scope)),
+            #     )
+            # except Exception as e:
+            #     print(
+            #         f"Error creating SessionParticipant: {e}: This is most likely because the session does not exist yet. The publisher should connect first."
+            #     )
 
         print("connect")
 
     def on_disconnect(self):
         """helper method for when a user disconnects, to log the session and participant information."""
+
         # if this is the publisher, we can log that they disconnected.
         if self.can_publish:
-            try:
+            # Safely check if active_session exists on 'self' before modifying it
+            if hasattr(self, "active_session") and self.active_session:
                 # TODO: Consider using timezone-aware datetime objects for consistency
                 self.active_session.ended_at = timezone.now()
-                self.active_session.save()
-                self.db_user.is_streaming = False
-                self.db_user.save(
-                    update_fields=["is_streaming"]
-                )  # Skips Unnecessary Database Triggers and only updates the is_streaming field in the database, improving performance and reducing overhead.
+                self.active_session.save(update_fields=["ended_at"])  # Optimization
+
+                if self.db_user:
+                    self.db_user.is_streaming = False
+                    self.db_user.save(
+                        update_fields=["is_streaming"]
+                    )  # Skips Unnecessary Database Triggers
+
                 print(
-                    f"LiveLocationSession ended for user {self.db_user.id} at {self.active_session.ended_at} {self.db_user.is_streaming}"
+                    f"LiveLocationSession ended for user {self.db_user.id if self.db_user else 'None'} at {self.active_session.ended_at}"
                 )
-            except LiveLocationSession.DoesNotExist:
-                print("Warning: Attempted to end a session that does not exist.")
-                pass  # Handle the case where the session does not exist
+            else:
+                print(
+                    "Warning: active_session was never successfully created in on_connect. Nothing to save."
+                )
 
         else:
-            try:
+            # Safely check if active_participant exists on 'self' before modifying it
+            if hasattr(self, "active_participant") and self.active_participant:
                 self.active_participant.left_at = timezone.now()
-                self.active_participant.save()
-            except SessionParticipant.DoesNotExist:
-                print("Warning: Attempted to end a participant that does not exist.")
-                pass  # Handle the case where the participant does not exist
+                self.active_participant.save(update_fields=["left_at"])  # Optimization
+            else:
+                print(
+                    "Warning: active_participant was never successfully created in on_connect. Nothing to save."
+                )
 
         print("disconnect")
+
+
+# def on_disconnect(self):
+#     """helper method for when a user disconnects, to log the session and participant information."""
+#     # if this is the publisher, we can log that they disconnected.
+#     if self.can_publish:
+#         try:
+#             # TODO: Consider using timezone-aware datetime objects for consistency
+#             self.active_session.ended_at = timezone.now()
+#             self.active_session.save()
+#             self.db_user.is_streaming = False
+#             self.db_user.save(
+#                 update_fields=["is_streaming"]
+#             )  # Skips Unnecessary Database Triggers and only updates the is_streaming field in the database, improving performance and reducing overhead.
+#             print(
+#                 f"LiveLocationSession ended for user {self.db_user.id} at {self.active_session.ended_at} {self.db_user.is_streaming}"
+#             )
+#         except LiveLocationSession.DoesNotExist:
+#             print("Warning: Attempted to end a session that does not exist.")
+#             pass  # Handle the case where the session does not exist
+
+#     else:
+#         try:
+#             self.active_participant.left_at = timezone.now()
+#             self.active_participant.save()
+#         except SessionParticipant.DoesNotExist:
+#             print("Warning: Attempted to end a participant that does not exist.")
+#             pass  # Handle the case where the participant does not exist
+
+#     print("disconnect")
